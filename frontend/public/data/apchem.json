@@ -1,0 +1,258 @@
+{
+  "nodes": [
+    {
+      "group": "nodes",
+      "data": {
+        "id": "moles",
+        "label": "Moles",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "isotopes_and_coulombs_law",
+        "label": "Isotopes and Coulomb’s Law",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "defining_matter",
+        "label": "Defining matter",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "atomic_structure_and_electron_configuration",
+        "label": "Atomic structure and electron configuration",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "photoelectron_spectroscopy",
+        "label": "Photoelectron spectroscopy",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "periodic_trends",
+        "label": "Periodic trends",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "valence_electrons_and_ionic_compounds",
+        "label": "Valence electrons and ionic compounds",
+        "unit": "Unit 1: Atomic Structures and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "types_of_chemical_bonds",
+        "label": "Types of Chemical Bonds",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy",
+        "label": "Intramolecular Force and Potential Energy",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "structure_of_ionic_solids",
+        "label": "Structure of Ionic Solids",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "structure_of_metals_and_alloys",
+        "label": "Structure of Metals and Alloys",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "resonance_and_formal_charge",
+        "label": "Resonance and Formal Charge",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    },
+    {
+      "group": "nodes",
+      "data": {
+        "id": "vsepr_and_hybridization",
+        "label": "VSEPR and Hybridization",
+        "unit": "Unit 2: Compound Structure and Properties",
+        "description": "lorem ipsum dolor sit amet"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "group": "edges",
+      "data": {
+        "id": "photoelectron_spectroscopy_TO_valence_electrons_and_ionic_compounds",
+        "source": "photoelectron_spectroscopy",
+        "target": "valence_electrons_and_ionic_compounds",
+        "description": "Since valence electrons are further from the nucleus, the energy it takes to remove one from an atom is less"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "isotopes_and_coulombs_law_TO_photoelectron_spectroscopy",
+        "source": "isotopes_and_coulombs_law",
+        "target": "photoelectron_spectroscopy",
+        "description": "Coulomb’s law explains why certain electrons have higher ionization energy"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "isotopes_and_coulombs_law_TO_moles",
+        "source": "isotopes_and_coulombs_law",
+        "target": "moles",
+        "description": "Can convert moles to AMU and back"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "isotopes_and_coulombs_law_TO_valence_electrons_and_ionic_compounds",
+        "source": "isotopes_and_coulombs_law",
+        "target": "valence_electrons_and_ionic_compounds",
+        "description": "Inverse square law in Coulomb’s law makes it so distance is a larger determining factor than charge, thus why valence electrons have such a low ionization energy"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "atomic_structure_and_electron_configuration_TO_isotopes_and_coulombs_law",
+        "source": "atomic_structure_and_electron_configuration",
+        "target": "isotopes_and_coulombs_law",
+        "description": "The more protons an atom has, the heavier it is (See Isotopes and Coulomb’s Law - Moles as to why the more protons an atom has, the heavier a mole of it is)"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "periodic_trends_TO_photoelectron_spectroscopy",
+        "source": "periodic_trends",
+        "target": "photoelectron_spectroscopy",
+        "description": "Atomic radius and electronegativity both play into ionization energy"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "isotopes_and_coulombs_law_TO_periodic_trends",
+        "source": "isotopes_and_coulombs_law",
+        "target": "periodic_trends",
+        "description": "coulomb's law can be used to describe why ionization energy and atomic radius are inversly related in periodic trends"
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy_TO_types_of_chemical_bonds",
+        "source": "intramolecular_force_and_potential_energy",
+        "target": "types_of_chemical_bonds",
+        "description": "Chemical bonds are a type of intramolecular force. Strength of bonds determines potential energy of the system."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "structure_of_ionic_solids_TO_types_of_chemical_bonds",
+        "source": "structure_of_ionic_solids",
+        "target": "types_of_chemical_bonds",
+        "description": "Ionic solids are made of ionic bonds. Stronger bonds -> stronger solid."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy_TO_structure_of_ionic_solids",
+        "source": "intramolecular_force_and_potential_energy",
+        "target": "structure_of_ionic_solids",
+        "description": "The structure of ionic solids make it so that the system has the lowest possible potential energy."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy_TO_resonance_and_formal_charge",
+        "source": "intramolecular_force_and_potential_energy",
+        "target": "resonance_and_formal_charge",
+        "description": "Delocalized electrons in resonance structures create more stable bonding arrangements with lower potential energy by spreading out electron density and reducing repulsion."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy_TO_structure_of_metals_and_alloys",
+        "source": "intramolecular_force_and_potential_energy",
+        "target": "structure_of_metals_and_alloys",
+        "description": "In metals and alloys, delocalized electrons reduce electrostatic repulsion between metal nuclei, minimizing potential energy while still allowing flexibility and conductivity."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "intramolecular_force_and_potential_energy_TO_vsepr_and_hybridization",
+        "source": "intramolecular_force_and_potential_energy",
+        "target": "vsepr_and_hybridization",
+        "description": "Ideal geometries minimize potential energy of the system."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "resonance_and_formal_charge_TO_vsepr_and_hybridization",
+        "source": "resonance_and_formal_charge",
+        "target": "vsepr_and_hybridization",
+        "description": "Resonance can slightly shift electron density across a molecule, modifying bond character and influencing idealized geometries and the degree of orbital mixing."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "types_of_chemical_bonds_TO_structure_of_metals_and_alloys",
+        "source": "types_of_chemical_bonds",
+        "target": "structure_of_metals_and_alloys",
+        "description": "Metals are made out of metallic bonds."
+      }
+    }
+  ]
+}
