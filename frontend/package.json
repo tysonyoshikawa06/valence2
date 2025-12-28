@@ -11,7 +11,9 @@
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
     "@next/mdx": "^16.1.1",
+    "@react-oauth/google": "^0.13.4",
     "cytoscape": "^3.33.1",
+    "jwt-decode": "^4.0.0",
     "katex": "^0.16.27",
     "next": "16.1.1",
     "next-mdx-remote": "^5.0.0",

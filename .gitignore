@@ -27,6 +27,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+#
+*.env
+
 # local env files
 .env*.local
 
@@ -199,3 +202,4 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/nextjs,node,windows
+__pycache__
