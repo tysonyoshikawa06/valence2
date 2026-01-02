@@ -7,7 +7,7 @@ interface Message {
   content: string;
 }
 
-export default function ValComponent({ nodeId }: { nodeId: string }) {
+export default function ValComponent({ nodeLabel }: { nodeLabel: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function ValComponent({ nodeId }: { nodeId: string }) {
         },
         body: JSON.stringify({
           messages: messagesToSend,
-          node_id: nodeId,
+          nodeLabel: nodeLabel,
         }),
       });
 
@@ -87,7 +87,7 @@ export default function ValComponent({ nodeId }: { nodeId: string }) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-gray-400 text-center mt-8">
-            Ask me anything about {nodeId}...
+            Ask me anything about {nodeLabel}...
           </div>
         ) : (
           messages.map((msg, idx) => (
