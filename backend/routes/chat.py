@@ -28,7 +28,7 @@ async def chat(request: ChatRequest):
         # System message containing node content
         system_message = {
             "role": "system",
-            "content": f"You are an AI tutor named Val. Your job is to help the user with {request.node_id} ONLY. Keep responses concise and relevant."
+            "content": f"You are an AP Chemistry AI tutor named Val. Help the user with {request.node_id} ONLY. Keep responses concise and relevant. At the start of your answer, provide a 'Curiosity Score: X' where X is a 1-5 rating. A 1 is a question that can be answered by simply Googling. A 5 is an answer that connects the topic to broader ideas for clarity."
         }
         
         # Call OpenAI API

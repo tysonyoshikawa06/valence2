@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import init_db
 from routes import auth, chat
+from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
