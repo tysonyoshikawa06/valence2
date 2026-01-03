@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import init_db
-from routes import auth, chat
+from routes import auth, chat, graph
 from dotenv import load_dotenv
 import os
 
@@ -32,6 +32,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(graph.router, prefix="/api", tags=["graph"])
 
 @app.get("/")
 async def root():

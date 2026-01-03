@@ -1,22 +1,52 @@
 "use client";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import cytoscape, { Core } from "cytoscape";
 
-// onCyInit is an optional prop; if provided, must take a Core parameter
 const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
-  // creates pointer to div element (initialized below through ref={cy})
   const cyContainer = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    const initializeUserGraph = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/initialize-graph`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Graph initialized:", data);
+        } else {
+          console.error("Failed to initialize graph");
+        }
+      } catch (error) {
+        console.error("Error initializing graph:", error);
+      }
+    };
+
     const loadGraph = async () => {
+      // Initialize user's graph data in database
+      await initializeUserGraph();
+
+      // Load graph
       const res = await fetch("/data/apchem.json");
       const data = await res.json();
 
       if (cyContainer.current) {
         const cyInstance = cytoscape({
-          // this container is the div element that cyContainer.current references
           container: cyContainer.current,
           elements: [...data.nodes, ...data.edges],
           layout: {
@@ -36,21 +66,21 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
                 label: "data(label)",
                 "text-valign": "center",
                 "text-halign": "center",
-                "background-color": "#ccc", // default color
+                "background-color": "#ccc",
               },
             },
             {
               selector:
                 'node[unit = "Unit 1: Atomic Structures and Properties"]',
               style: {
-                "background-color": "#60a5fa", // tailwind's blue 400
+                "background-color": "#60a5fa",
               },
             },
             {
               selector:
                 'node[unit = "Unit 2: Compound Structure and Properties"]',
               style: {
-                "background-color": "#F87171", // tailwind's red 400
+                "background-color": "#F87171",
               },
             },
             {
@@ -66,19 +96,18 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
 
         cyInstance.on("tap", "node", (event) => {
           const node = event.target;
-          const nodeId = node.id(); // unique node id
-          router.push(`/${nodeId}`); // navigate to dynamic route
+          const nodeId = node.id();
+          router.push(`/${nodeId}`);
         });
 
-        // pass instance back to parent
-        // check to see if onCyInit exists since it is typed as an optional prop
         if (onCyInit) {
           onCyInit(cyInstance);
         }
       }
     };
+
     loadGraph();
-  }, []);
+  }, [router, onCyInit]);
 
   return (
     <>

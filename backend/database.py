@@ -22,7 +22,7 @@ def execute_query(query, params=None, fetch=True):
         
         if fetch:
             result = cursor.fetchall()
-            conn.commit() 
+            conn.commit()
             conn.close()
             return result
         else:
@@ -38,18 +38,45 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create users table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            name VARCHAR(255),
-            picture TEXT,
-            google_id VARCHAR(255) UNIQUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
-    print("Database initialized successfully!")
+    try:
+        cursor.execute("""
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+        """)
+        
+        # Create users table with UUID
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                email VARCHAR(255) UNIQUE NOT NULL,
+                name VARCHAR(255),
+                picture TEXT,
+                google_id VARCHAR(255) UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create user_nodes table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_nodes (
+                id SERIAL PRIMARY KEY,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                node_id VARCHAR(255) NOT NULL,
+                neighbors TEXT[] DEFAULT '{}',
+                is_completed BOOLEAN DEFAULT FALSE,
+                curiosity_score INTEGER DEFAULT 0,
+                is_unlocked BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, node_id)
+            )
+        """)
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"ERROR in init_db: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.close()
+        raise
