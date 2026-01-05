@@ -39,11 +39,15 @@ def init_db():
     cursor = conn.cursor()
     
     try:
+        # Enable UUID extension
+        print("Creating UUID extension...")
         cursor.execute("""
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
         """)
+        print("UUID extension created!")
         
         # Create users table with UUID
+        print("Creating users table...")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -54,8 +58,10 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        print("Users table created!")
         
         # Create user_nodes table
+        print("Creating user_nodes table...")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_nodes (
                 id SERIAL PRIMARY KEY,
@@ -65,14 +71,17 @@ def init_db():
                 is_completed BOOLEAN DEFAULT FALSE,
                 curiosity_score INTEGER DEFAULT 0,
                 is_unlocked BOOLEAN DEFAULT FALSE,
+                chat_history JSONB DEFAULT '[]',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, node_id)
             )
         """)
+        print("User_nodes table created!")
         
         conn.commit()
         conn.close()
+        print("Database initialized successfully!")
         
     except Exception as e:
         print(f"ERROR in init_db: {e}")

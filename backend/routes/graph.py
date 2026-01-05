@@ -64,7 +64,7 @@ async def initialize_graph(user_id: str = Depends(get_current_user_id)):
         for node in graph_data['nodes']:
             node_id = node['data']['id']
             neighbors = neighbors_map.get(node_id, [])
-            is_unlocked = (node_id == "moles") # only moles node is unlocked at start
+            is_unlocked = node_id in ["moles", "defining_matter"]
             
             execute_query(
                 insert_query,
@@ -95,10 +95,26 @@ async def get_user_nodes(user_id: str = Depends(get_current_user_id)):
     nodes = execute_query(query, (user_id,))
     return {"nodes": nodes}
 
+@router.get("/user-nodes/{node_id}")
+async def get_single_node(node_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get a single node for the current user"""
+    query = """
+        SELECT node_id, neighbors, is_completed, curiosity_score, is_unlocked
+        FROM user_nodes
+        WHERE user_id = %s AND node_id = %s
+    """
+    result = execute_query(query, (user_id, node_id))
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Node not found")
+    
+    return result[0]
+
 @router.patch("/user-nodes/{node_id}/complete")
 async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id)):
-    """Mark a node as completed and unlock its neighbors"""
+    """Mark a node as completed and unlock its neighbors (if at least one of their neighbors is completed)"""
     try:
+        # Mark this node as completed
         update_query = """
             UPDATE user_nodes
             SET is_completed = TRUE, updated_at = CURRENT_TIMESTAMP
@@ -112,7 +128,9 @@ async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id
         
         neighbors = result[0]['neighbors']
         
+        # For each neighbor, check if it should be unlocked
         for neighbor_id in neighbors:
+            # Get the neighbor's own neighbors
             neighbor_query = """
                 SELECT neighbors FROM user_nodes
                 WHERE user_id = %s AND node_id = %s
@@ -122,18 +140,18 @@ async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id
             if neighbor_data:
                 neighbor_neighbors = neighbor_data[0]['neighbors']
                 
+                # Check if ANY of the neighbor's neighbors are completed
                 check_query = """
-                    SELECT COUNT(*) as total,
-                           SUM(CASE WHEN is_completed THEN 1 ELSE 0 END) as completed
+                    SELECT SUM(CASE WHEN is_completed THEN 1 ELSE 0 END) as completed
                     FROM user_nodes
                     WHERE user_id = %s AND node_id = ANY(%s)
                 """
                 counts = execute_query(check_query, (user_id, neighbor_neighbors))
                 
-                total = counts[0]['total']
                 completed = counts[0]['completed'] or 0
                 
-                if total > 0 and total == completed:
+                # If at least one neighbor is completed, unlock this node
+                if completed > 0:
                     unlock_query = """
                         UPDATE user_nodes
                         SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
@@ -151,7 +169,7 @@ async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id
 async def update_curiosity_score(
     node_id: str,
     score_delta: int,
-    user_id: str = Depends(get_current_user_id) 
+    user_id: str = Depends(get_current_user_id)
 ):
     """Update curiosity score for a node"""
     update_query = """
@@ -166,3 +184,29 @@ async def update_curiosity_score(
         raise HTTPException(status_code=404, detail="Node not found")
     
     return {"curiosity_score": result[0]['curiosity_score']}
+
+@router.delete("/reset-graph")
+async def reset_graph(user_id: str = Depends(get_current_user_id)):
+    """Reset all nodes for the user (set to incomplete, locked, curiosity 0, except moles and defining_matter)"""
+    try:
+        # Reset all nodes
+        reset_query = """
+            UPDATE user_nodes
+            SET 
+                is_completed = FALSE,
+                curiosity_score = 0,
+                is_unlocked = CASE 
+                    WHEN node_id IN ('moles', 'defining_matter') THEN TRUE 
+                    ELSE FALSE 
+                END,
+                chat_history = '[]',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = %s
+        """
+        execute_query(reset_query, (user_id,), fetch=False)
+        
+        return {"message": "Graph reset successfully"}
+        
+    except Exception as e:
+        print(f"Error resetting graph: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
