@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 interface NodeProgressProps {
   nodeId: string;
@@ -12,13 +13,25 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
+  const lastManualUpdate = useRef<number>(0); // Track last manual update time
+  const router = useRouter();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   // Fetch single node state
   const fetchNodeState = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    // Skip polling if we just did a manual update (wait 2 seconds)
+    const timeSinceUpdate = Date.now() - lastManualUpdate.current;
+    if (timeSinceUpdate < 2000) {
+      console.log("Skipping poll - recent manual update");
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/user-nodes/${nodeId}`, {
@@ -27,12 +40,14 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
         },
       });
 
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/login");
+        return;
+      }
+
       if (response.ok) {
         const node = await response.json();
-
-        // // Check if score increased (from chat)
-        // const scoreIncreased =
-        //   node.curiosity_score > curiosityScore && curiosityScore > 0;
 
         setCuriosityScore(node.curiosity_score);
         setIsCompleted(node.is_completed);
@@ -56,31 +71,35 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
     fetchNodeState();
   }, [nodeId]);
 
-  // Poll for updates every .5 seconds when unlocked and not completed
+  // Poll for updates every second when unlocked and not completed
   useEffect(() => {
     if (!isUnlocked || isCompleted) return;
 
     const interval = setInterval(() => {
       fetchNodeState();
-    }, 500); // Poll every .5 seconds
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [isUnlocked, isCompleted, nodeId]);
 
   const updateCuriosityScore = async (delta: number) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
     const newScore = curiosityScore + delta;
-
-    // Prevent going below 0 or above 5 (unless completing)
     if (newScore < 0 || (newScore > 5 && !isCompleted)) return;
 
-    // Update UI immediately (optimistic)
+    // Record that we just did a manual update
+    lastManualUpdate.current = Date.now();
+
+    // Optimistic update - immediate UI response
     const previousScore = curiosityScore;
     setCuriosityScore(newScore);
+    console.log("frontend updated");
 
-    // Check if this will trigger completion (optimistic)
     const willComplete = newScore > 4 && !isCompleted;
     if (willComplete) {
       setIsCompleted(true);
@@ -88,48 +107,44 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
       setTimeout(() => setShowCompletionMessage(false), 5000);
     }
 
-    try {
-      // Update curiosity score in db
-      const response = await fetch(
-        `${API_URL}/api/user-nodes/${nodeId}/curiosity?score_delta=${delta}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+    // Fire and forget - don't wait for response
+    fetch(
+      `${API_URL}/api/user-nodes/${nodeId}/curiosity?score_delta=${delta}`,
+      {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    )
+      .then((response) => {
+        if (!response.ok) {
+          // ONLY revert on error
+          console.error("Backend update failed, reverting");
+          setCuriosityScore(previousScore);
+          if (willComplete) {
+            setIsCompleted(false);
+            setShowCompletionMessage(false);
+          }
+        } else {
+          // Success! Trust our optimistic update, no need to fetch
+          console.log("Backend update successful");
         }
-      );
-
-      if (!response.ok) {
-        // Revert on error
+      })
+      .catch((error) => {
+        // ONLY revert on error
+        console.error("Error updating curiosity score:", error);
         setCuriosityScore(previousScore);
         if (willComplete) {
           setIsCompleted(false);
           setShowCompletionMessage(false);
         }
-        console.error("Failed to update curiosity score");
-        return;
-      }
+      });
 
-      // If increase completes, call the complete endpoint but don't wait for it
-      if (willComplete) {
-        fetch(`${API_URL}/api/user-nodes/${nodeId}/complete`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }).catch((error) => {
-          console.error("Error completing node:", error);
-        });
-      }
-    } catch (error) {
-      // Revert on error
-      setCuriosityScore(previousScore);
-      if (willComplete) {
-        setIsCompleted(false);
-        setShowCompletionMessage(false);
-      }
-      console.error("Error updating curiosity score:", error);
+    // If completing, call complete endpoint (fire and forget)
+    if (willComplete) {
+      fetch(`${API_URL}/api/user-nodes/${nodeId}/complete`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
   };
 

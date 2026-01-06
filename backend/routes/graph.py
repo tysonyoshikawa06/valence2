@@ -26,7 +26,7 @@ def get_current_user_id(authorization: str = Header(None)):
 async def initialize_graph(user_id: str = Depends(get_current_user_id)):
     """Initialize user's graph nodes from apchem.json"""
     try:
-        # Load the graph data
+        # Load graph data
         with open('public/data/apchem.json', 'r') as f:
             graph_data = json.load(f)
         
@@ -112,7 +112,7 @@ async def get_single_node(node_id: str, user_id: str = Depends(get_current_user_
 
 @router.patch("/user-nodes/{node_id}/complete")
 async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id)):
-    """Mark a node as completed and unlock its neighbors (if at least one of their neighbors is completed)"""
+    """Mark a node as completed and unlock all its neighbors"""
     try:
         # Mark this node as completed
         update_query = """
@@ -128,38 +128,19 @@ async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id
         
         neighbors = result[0]['neighbors']
         
-        # For each neighbor, check if it should be unlocked
-        for neighbor_id in neighbors:
-            # Get the neighbor's own neighbors
-            neighbor_query = """
-                SELECT neighbors FROM user_nodes
-                WHERE user_id = %s AND node_id = %s
+        # Unlock all neighbors directly
+        if neighbors:
+            unlock_query = """
+                UPDATE user_nodes
+                SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND node_id = ANY(%s)
             """
-            neighbor_data = execute_query(neighbor_query, (user_id, neighbor_id))
-            
-            if neighbor_data:
-                neighbor_neighbors = neighbor_data[0]['neighbors']
-                
-                # Check if ANY of the neighbor's neighbors are completed
-                check_query = """
-                    SELECT SUM(CASE WHEN is_completed THEN 1 ELSE 0 END) as completed
-                    FROM user_nodes
-                    WHERE user_id = %s AND node_id = ANY(%s)
-                """
-                counts = execute_query(check_query, (user_id, neighbor_neighbors))
-                
-                completed = counts[0]['completed'] or 0
-                
-                # If at least one neighbor is completed, unlock this node
-                if completed > 0:
-                    unlock_query = """
-                        UPDATE user_nodes
-                        SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
-                        WHERE user_id = %s AND node_id = %s
-                    """
-                    execute_query(unlock_query, (user_id, neighbor_id), fetch=False)
+            execute_query(unlock_query, (user_id, neighbors), fetch=False)
         
-        return {"message": "Node completed successfully", "unlocked_neighbors": neighbors}
+        return {
+            "message": "Node completed successfully",
+            "unlocked_neighbors": neighbors
+        }
         
     except Exception as e:
         print(f"Error completing node: {e}")

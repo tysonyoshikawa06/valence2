@@ -15,45 +15,18 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
   const loadGraph = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      console.error("No auth token found");
-      setLoading(false);
+      router.push("/login");
       return;
     }
 
     try {
       setLoading(true);
 
-      const [initResponse, userNodesResponse, graphDataResponse] =
-        await Promise.all([
-          fetch(`${API_URL}/api/initialize-graph`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/api/user-nodes`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch("/data/apchem.json"),
-        ]);
+      // STEP 1: Load graph structure immediately (no waiting!)
+      const graphDataResponse = await fetch("/data/apchem.json");
+      const graphData = await graphDataResponse.json();
 
-      const [initData, userNodesData, graphData] = await Promise.all([
-        initResponse.ok ? initResponse.json() : null,
-        userNodesResponse.ok ? userNodesResponse.json() : null,
-        graphDataResponse.json(),
-      ]);
-
-      console.log("Graph initialized:", initData);
-
-      let userNodeStates: Record<string, any> = {};
-      if (userNodesData) {
-        userNodeStates = userNodesData.nodes.reduce(
-          (acc: Record<string, any>, node: any) => {
-            acc[node.node_id] = node;
-            return acc;
-          },
-          {}
-        );
-      }
-
+      // STEP 2: Render graph immediately with default styling
       if (cyContainer.current) {
         const cy = cytoscape({
           container: cyContainer.current,
@@ -75,7 +48,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
                 label: "data(label)",
                 "text-valign": "center",
                 "text-halign": "center",
-                "background-color": "#ccc",
+                "background-color": "#9ca3af", // Default gray (locked)
               },
             },
             // Unit 1 - Locked (gray)
@@ -83,7 +56,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 1: Atomic Structures and Properties"].locked',
               style: {
-                "background-color": "#9ca3af", // gray-400
+                "background-color": "#9ca3af",
               },
             },
             // Unit 1 - Unlocked & Incomplete (light blue)
@@ -91,7 +64,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.incomplete',
               style: {
-                "background-color": "#93c5fd", // blue-300
+                "background-color": "#93c5fd",
               },
             },
             // Unit 1 - Unlocked & Complete (dark blue)
@@ -99,7 +72,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.complete',
               style: {
-                "background-color": "#1e40af", // blue-800
+                "background-color": "#1e40af",
               },
             },
             // Unit 2 - Locked (gray)
@@ -107,7 +80,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 2: Compound Structure and Properties"].locked',
               style: {
-                "background-color": "#9ca3af", // gray-400
+                "background-color": "#9ca3af",
               },
             },
             // Unit 2 - Unlocked & Incomplete (light red)
@@ -115,7 +88,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.incomplete',
               style: {
-                "background-color": "#fca5a5", // red-300
+                "background-color": "#fca5a5",
               },
             },
             // Unit 2 - Unlocked & Complete (dark red)
@@ -123,7 +96,7 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
               selector:
                 'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.complete',
               style: {
-                "background-color": "#b91c1c", // red-700
+                "background-color": "#b91c1c",
               },
             },
             {
@@ -137,30 +110,10 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
           ],
         });
 
-        // Apply locked/unlocked and complete/incomplete classes
+        // Apply default "locked" class to all nodes initially
         cy.nodes().forEach((node) => {
-          const nodeId = node.id();
-          const nodeState = userNodeStates[nodeId];
-
-          if (nodeState) {
-            // Apply locked/unlocked
-            if (nodeState.is_unlocked) {
-              node.addClass("unlocked");
-              node.removeClass("locked");
-            } else {
-              node.addClass("locked");
-              node.removeClass("unlocked");
-            }
-
-            // Apply complete/incomplete
-            if (nodeState.is_completed) {
-              node.addClass("complete");
-              node.removeClass("incomplete");
-            } else {
-              node.addClass("incomplete");
-              node.removeClass("complete");
-            }
-          }
+          node.addClass("locked");
+          node.addClass("incomplete");
         });
 
         cy.on("tap", "node", (event) => {
@@ -174,10 +127,68 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
         if (onCyInit) {
           onCyInit(cy);
         }
+
+        // Graph is visible now!
+        setLoading(false);
+      }
+
+      // STEP 3: Fetch user data in background and update colors
+      const [initResponse, userNodesResponse] = await Promise.all([
+        fetch(`${API_URL}/api/initialize-graph`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/api/user-nodes`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (initResponse.status === 401 || userNodesResponse.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/login");
+        return;
+      }
+
+      const [initData, userNodesData] = await Promise.all([
+        initResponse.ok ? initResponse.json() : null,
+        userNodesResponse.ok ? userNodesResponse.json() : null,
+      ]);
+
+      console.log("Graph initialized:", initData);
+
+      // STEP 4: Update node colors based on user progress
+      if (userNodesData && cyInstance.current) {
+        const cy = cyInstance.current;
+
+        userNodesData.nodes.forEach((nodeData: any) => {
+          const node = cy.getElementById(nodeData.node_id);
+
+          if (node.length > 0) {
+            // Remove default classes
+            node.removeClass("locked");
+            node.removeClass("unlocked");
+            node.removeClass("complete");
+            node.removeClass("incomplete");
+
+            // Apply actual state
+            if (nodeData.is_unlocked) {
+              node.addClass("unlocked");
+            } else {
+              node.addClass("locked");
+            }
+
+            if (nodeData.is_completed) {
+              node.addClass("complete");
+            } else {
+              node.addClass("incomplete");
+            }
+          }
+        });
+
+        console.log("Node colors updated with user progress");
       }
     } catch (error) {
       console.error("Error loading graph:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -193,7 +204,10 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
 
     setResetting(true);
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/reset-graph`, {
@@ -202,6 +216,12 @@ const Graph = ({ onCyInit }: { onCyInit?: (cyInstance: Core) => void }) => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/login");
+        return;
+      }
 
       if (response.ok) {
         if (cyInstance.current) {
