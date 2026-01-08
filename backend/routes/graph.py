@@ -191,3 +191,24 @@ async def reset_graph(user_id: str = Depends(get_current_user_id)):
     except Exception as e:
         print(f"Error resetting graph: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/complete-all-nodes")
+async def complete_all_nodes(user_id: str = Depends(get_current_user_id)):
+    """Complete all nodes for the user (set curiosity score to 5 and mark as completed/unlocked)"""
+    try:
+        complete_query = """
+            UPDATE user_nodes
+            SET 
+                curiosity_score = 5,
+                is_completed = TRUE,
+                is_unlocked = TRUE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = %s
+        """
+        execute_query(complete_query, (user_id,), fetch=False)
+        
+        return {"message": "All nodes completed successfully"}
+        
+    except Exception as e:
+        print(f"Error completing all nodes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -253,6 +253,51 @@
         "target": "structure_of_metals_and_alloys",
         "description": "Metals are made out of metallic bonds."
       }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "valence_electrons_and_ionic_compounds_TO_types_of_chemical_bonds",
+        "source": "valence_electrons_and_ionic_compounds",
+        "target": "types_of_chemical_bonds",
+        "description": "Valence electrons determine the types of chemical bonds that form between atoms."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "periodic_trends_TO_types_of_chemical_bonds",
+        "source": "periodic_trends",
+        "target": "types_of_chemical_bonds",
+        "description": "Electronegativity trends on the periodic table predict bond polarity and type."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "atomic_structure_and_electron_configuration_TO_resonance_and_formal_charge",
+        "source": "atomic_structure_and_electron_configuration",
+        "target": "resonance_and_formal_charge",
+        "description": "Electron configuration directly informs formal charge."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "periodic_trends_TO_vsepr_and_hybridization",
+        "source": "periodic_trends",
+        "target": "vsepr_and_hybridization",
+        "description": "Atomic size of central atoms affect bond angles. Smaller central atoms experience more electron-electron repulsion, thus leading to larger bond angles."
+      }
+    },
+    {
+      "group": "edges",
+      "data": {
+        "id": "photoelectron_spectroscopy_TO_types_of_chemical_bonds",
+        "source": "photoelectron_spectroscopy",
+        "target": "types_of_chemical_bonds",
+        "description": "The amount of energy it takes to remove an electron from an atom (ionization energy determined by PES), predicts how chemicals bond. The easier it is to remove an electron (lower ionization energy), the more likely an atom will share their electrons in a bond."
+      }
     }
   ]
 }
