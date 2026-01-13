@@ -28,13 +28,25 @@ interface LockedNodeInfo {
   y: number;
 }
 
+interface NodeState {
+  node_id: string;
+  is_unlocked: boolean;
+  is_completed: boolean;
+  curiosity_score: number;
+  neighbors: string[];
+}
+
+interface UserNodesData {
+  nodes: NodeState[];
+}
+
 // ============================================================================
 // MODULE-LEVEL CACHE
 // ============================================================================
 
 let cachedGraphData: any = null;
 let cachedLayout: any = null;
-let cachedUserNodes: any = null;
+let cachedUserNodes: UserNodesData | null = null;
 let lastFetchTime: number = 0;
 
 // ============================================================================
@@ -117,12 +129,12 @@ export default function Graph({ filter }: GraphProps) {
   // APPLY NODE STATES (from user data)
   // ==========================================================================
 
-  const applyNodeStates = useCallback((userNodesData: any) => {
+  const applyNodeStates = useCallback((userNodesData: UserNodesData) => {
     if (!cyInstance.current) return;
 
     const cy = cyInstance.current;
-    const stateMap = new Map(
-      userNodesData.nodes.map((n: any) => [n.node_id, n])
+    const stateMap = new Map<string, NodeState>(
+      userNodesData.nodes.map((n) => [n.node_id, n])
     );
 
     cy.batch(() => {
@@ -167,7 +179,7 @@ export default function Graph({ filter }: GraphProps) {
         }
 
         if (response.ok) {
-          const data = await response.json();
+          const data: UserNodesData = await response.json();
           cachedUserNodes = data;
           lastFetchTime = now;
           applyNodeStates(data);
@@ -275,14 +287,13 @@ export default function Graph({ filter }: GraphProps) {
             },
           },
 
-          // Unit 1 - Locked
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].locked',
             style: {
               "background-color": "#9ca3af",
               cursor: "not-allowed",
-            },
+            } as any,
           },
 
           // Unit 1 - Unlocked & Incomplete
@@ -292,7 +303,7 @@ export default function Graph({ filter }: GraphProps) {
             style: {
               "background-color": "#93c5fd",
               cursor: "pointer",
-            },
+            } as any,
           },
 
           // Unit 1 - Complete
@@ -302,7 +313,7 @@ export default function Graph({ filter }: GraphProps) {
             style: {
               "background-color": "#1e40af",
               cursor: "pointer",
-            },
+            } as any,
           },
 
           // Unit 2 - Locked
@@ -312,7 +323,7 @@ export default function Graph({ filter }: GraphProps) {
             style: {
               "background-color": "#9ca3af",
               cursor: "not-allowed",
-            },
+            } as any,
           },
 
           // Unit 2 - Unlocked & Incomplete
@@ -322,7 +333,7 @@ export default function Graph({ filter }: GraphProps) {
             style: {
               "background-color": "#fca5a5",
               cursor: "pointer",
-            },
+            } as any,
           },
 
           // Unit 2 - Complete
@@ -332,7 +343,7 @@ export default function Graph({ filter }: GraphProps) {
             style: {
               "background-color": "#b91c1c",
               cursor: "pointer",
-            },
+            } as any,
           },
 
           // Edges
@@ -354,7 +365,7 @@ export default function Graph({ filter }: GraphProps) {
               width: 4,
             },
           },
-        ],
+        ] as any,
       });
 
       // Cache layout on first render
@@ -572,7 +583,7 @@ export default function Graph({ filter }: GraphProps) {
                 onClick={() => setLockedNode(null)}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-600"
               >
-                ×
+                x
               </button>
 
               {/* Content */}

@@ -9,6 +9,7 @@ import os
 load_dotenv()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
+PORT = int(os.getenv("PORT", 8000))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,4 +41,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
