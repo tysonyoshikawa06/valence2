@@ -48,6 +48,8 @@ let cachedGraphData: any = null;
 let cachedLayout: any = null;
 let cachedUserNodes: UserNodesData | null = null;
 let lastFetchTime: number = 0;
+let persistentCyInstance: Core | null = null;
+let instanceContainer: HTMLDivElement | null = null;
 
 // ============================================================================
 // EXPORTED GRAPH ACTIONS HOOK
@@ -75,6 +77,8 @@ export const useGraphActions = () => {
       });
 
       cachedUserNodes = null;
+      lastFetchTime = 0;
+
       window.location.reload();
     } catch (error) {
       console.error("Error resetting graph:", error);
@@ -100,6 +104,8 @@ export const useGraphActions = () => {
       });
 
       cachedUserNodes = null;
+      lastFetchTime = 0;
+
       window.location.reload();
     } catch (error) {
       console.error("Error completing all nodes:", error);
@@ -107,6 +113,11 @@ export const useGraphActions = () => {
   };
 
   return { resetGraph, completeAllNodes };
+};
+
+export const refreshGraphFromExternal = () => {
+  cachedUserNodes = null;
+  lastFetchTime = 0;
 };
 
 // ============================================================================
@@ -162,7 +173,6 @@ export default function Graph({ filter }: GraphProps) {
       try {
         const now = Date.now();
 
-        // Use cache if recent
         if (!forceRefresh && cachedUserNodes && now - lastFetchTime < 2000) {
           applyNodeStates(cachedUserNodes);
           return;
@@ -204,7 +214,6 @@ export default function Graph({ filter }: GraphProps) {
     const cy = cyInstance.current;
 
     cy.batch(() => {
-      // Filter nodes
       cy.nodes().forEach((node) => {
         const unit = node.data("unit");
         let shouldShow = true;
@@ -217,7 +226,6 @@ export default function Graph({ filter }: GraphProps) {
         node.style("display", shouldShow ? "element" : "none");
       });
 
-      // Filter edges (hide if either endpoint is hidden)
       cy.edges().forEach((edge) => {
         const source = edge.source();
         const target = edge.target();
@@ -244,6 +252,26 @@ export default function Graph({ filter }: GraphProps) {
     try {
       setLoading(true);
 
+      // Reuse persistent instance if available
+      if (persistentCyInstance && cyContainer.current) {
+        console.log("♻️ Reusing existing Cytoscape instance");
+
+        persistentCyInstance.mount(cyContainer.current);
+        cyInstance.current = persistentCyInstance;
+        instanceContainer = cyContainer.current;
+
+        if (cachedUserNodes) {
+          applyNodeStates(cachedUserNodes);
+        }
+
+        applyFilter();
+        setLoading(false);
+        isInitialized.current = true;
+
+        await updateNodeColors(true);
+        return;
+      }
+
       // Load graph structure
       let graphData = cachedGraphData;
       if (!graphData) {
@@ -254,7 +282,6 @@ export default function Graph({ filter }: GraphProps) {
 
       if (!cyContainer.current) return;
 
-      // Determine layout
       const layoutConfig: LayoutOptions = cachedLayout || {
         name: "cose",
         idealEdgeLength: 100,
@@ -263,19 +290,18 @@ export default function Graph({ filter }: GraphProps) {
         numIter: 300,
         padding: 125,
         animate: false,
+        randomize: false,
       };
 
-      // Create cytoscape instance
       const cy = cytoscape({
         container: cyContainer.current,
         elements: [...graphData.nodes, ...graphData.edges],
         layout: layoutConfig,
-        hideEdgesOnViewport: true,
-        textureOnViewport: true,
-        pixelRatio: 1,
+        hideEdgesOnViewport: false,
+        textureOnViewport: false,
+        pixelRatio: "auto",
 
         style: [
-          // Base node style
           {
             selector: "node",
             style: {
@@ -286,7 +312,6 @@ export default function Graph({ filter }: GraphProps) {
               "font-size": "12px",
             },
           },
-
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].locked',
@@ -295,8 +320,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "not-allowed",
             } as any,
           },
-
-          // Unit 1 - Unlocked & Incomplete
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.incomplete',
@@ -305,8 +328,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "pointer",
             } as any,
           },
-
-          // Unit 1 - Complete
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.complete',
@@ -315,8 +336,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "pointer",
             } as any,
           },
-
-          // Unit 2 - Locked
           {
             selector:
               'node[unit = "Unit 2: Compound Structure and Properties"].locked',
@@ -325,8 +344,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "not-allowed",
             } as any,
           },
-
-          // Unit 2 - Unlocked & Incomplete
           {
             selector:
               'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.incomplete',
@@ -335,8 +352,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "pointer",
             } as any,
           },
-
-          // Unit 2 - Complete
           {
             selector:
               'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.complete',
@@ -345,8 +360,6 @@ export default function Graph({ filter }: GraphProps) {
               cursor: "pointer",
             } as any,
           },
-
-          // Edges
           {
             selector: "edge",
             style: {
@@ -356,8 +369,6 @@ export default function Graph({ filter }: GraphProps) {
               width: 2,
             },
           },
-
-          // Edge hover
           {
             selector: "edge:hover",
             style: {
@@ -368,7 +379,6 @@ export default function Graph({ filter }: GraphProps) {
         ] as any,
       });
 
-      // Cache layout on first render
       if (!cachedLayout) {
         cy.one("layoutstop", () => {
           const positions: any = {};
@@ -384,7 +394,6 @@ export default function Graph({ filter }: GraphProps) {
         });
       }
 
-      // Set default locked state
       cy.batch(() => {
         cy.nodes().forEach((node) => {
           node.addClass("locked incomplete");
@@ -392,12 +401,10 @@ export default function Graph({ filter }: GraphProps) {
         });
       });
 
-      // Apply cached user data if available
       if (cachedUserNodes) {
         applyNodeStates(cachedUserNodes);
       }
 
-      // Event: Node click
       cy.on("tap", "node", (event) => {
         const node = event.target;
         const isUnlocked = node.data("is_unlocked");
@@ -416,7 +423,6 @@ export default function Graph({ filter }: GraphProps) {
         router.push(`/${node.id()}`);
       });
 
-      // Event: Edge click
       cy.on("tap", "edge", (event) => {
         const edge = event.target;
         const source = cy.getElementById(edge.data("source"));
@@ -432,7 +438,6 @@ export default function Graph({ filter }: GraphProps) {
         });
       });
 
-      // Event: Background click (close tooltips)
       cy.on("tap", (event) => {
         if (event.target === cy) {
           setSelectedEdge(null);
@@ -441,35 +446,34 @@ export default function Graph({ filter }: GraphProps) {
       });
 
       cyInstance.current = cy;
+      persistentCyInstance = cy;
+      instanceContainer = cyContainer.current;
+
       setLoading(false);
       isInitialized.current = true;
 
-      // Background: Initialize user graph
       fetch(`${API_URL}/api/initialize-graph`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Fetch user progress
       await updateNodeColors();
     } catch (error) {
       console.error("Error initializing graph:", error);
       setLoading(false);
     }
-  }, [API_URL, router, applyNodeStates, updateNodeColors]);
+  }, [API_URL, router, applyNodeStates, updateNodeColors, applyFilter]);
 
   // ==========================================================================
   // EFFECTS
   // ==========================================================================
 
-  // Initialize graph once
   useEffect(() => {
     if (!isInitialized.current) {
       initializeGraph();
     }
   }, [initializeGraph]);
 
-  // Poll for updates
   useEffect(() => {
     const interval = setInterval(() => {
       if (cyInstance.current && isInitialized.current) {
@@ -480,7 +484,6 @@ export default function Graph({ filter }: GraphProps) {
     return () => clearInterval(interval);
   }, [updateNodeColors]);
 
-  // Refresh on tab focus
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && isInitialized.current) {
@@ -493,12 +496,21 @@ export default function Graph({ filter }: GraphProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [updateNodeColors]);
 
-  // Apply filter when it changes
   useEffect(() => {
     if (isInitialized.current) {
       applyFilter();
     }
   }, [filter, applyFilter]);
+
+  useEffect(() => {
+    const handleRefreshGraph = () => {
+      console.log("🔄 Refreshing graph from external trigger");
+      updateNodeColors(true);
+    };
+
+    window.addEventListener("refreshGraph", handleRefreshGraph);
+    return () => window.removeEventListener("refreshGraph", handleRefreshGraph);
+  }, [updateNodeColors]);
 
   // ==========================================================================
   // RENDER
@@ -506,7 +518,6 @@ export default function Graph({ filter }: GraphProps) {
 
   return (
     <>
-      {/* Loading State */}
       {loading && (
         <div className="relative w-full h-[600px] bg-gray-100 rounded-lg flex items-center justify-center">
           <div className="text-center">
@@ -516,7 +527,6 @@ export default function Graph({ filter }: GraphProps) {
         </div>
       )}
 
-      {/* Graph Container */}
       <div className="relative">
         <div
           ref={cyContainer}
@@ -527,7 +537,6 @@ export default function Graph({ filter }: GraphProps) {
           }}
         />
 
-        {/* Edge Tooltip */}
         {selectedEdge && (
           <div
             className="absolute z-50 pointer-events-none"
@@ -538,18 +547,13 @@ export default function Graph({ filter }: GraphProps) {
             }}
           >
             <div className="pointer-events-auto bg-white rounded-lg shadow-xl border border-gray-200 p-4 max-w-xs">
-              {/* Arrow */}
               <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-white border-b border-r border-gray-200 rotate-45" />
-
-              {/* Close Button */}
               <button
                 onClick={() => setSelectedEdge(null)}
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               >
                 ×
               </button>
-
-              {/* Content */}
               <div className="space-y-2 pr-4">
                 <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
                   <span>{selectedEdge.source}</span>
@@ -564,7 +568,6 @@ export default function Graph({ filter }: GraphProps) {
           </div>
         )}
 
-        {/* Locked Node Tooltip */}
         {lockedNode && (
           <div
             className="absolute z-50 pointer-events-none"
@@ -575,18 +578,13 @@ export default function Graph({ filter }: GraphProps) {
             }}
           >
             <div className="pointer-events-auto bg-red-50 rounded-lg shadow-xl border-2 border-red-300 p-4 max-w-xs">
-              {/* Arrow */}
               <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-red-50 border-b-2 border-r-2 border-red-300 rotate-45" />
-
-              {/* Close Button */}
               <button
                 onClick={() => setLockedNode(null)}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-600"
               >
                 x
               </button>
-
-              {/* Content */}
               <div className="space-y-2 pr-4">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔒</span>

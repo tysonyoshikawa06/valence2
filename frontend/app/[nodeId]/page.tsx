@@ -8,6 +8,7 @@ import Link from "next/link";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import GraphRefreshTrigger from "@/components/GraphRefreshTrigger";
 
 // ============================================================================
 // TYPES
@@ -172,6 +173,9 @@ export default async function NodePage({ params }: NodePageProps) {
   if (!content) {
     return (
       <div className="min-h-screen bg-gray-50">
+        {/* Graph Refresh Trigger */}
+        <GraphRefreshTrigger />
+
         {/* Header */}
         <div className="bg-white border-b sticky top-0 z-10">
           <div className="container mx-auto px-4 py-4">
@@ -227,6 +231,9 @@ export default async function NodePage({ params }: NodePageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Graph Refresh Trigger - Client component that refreshes graph */}
+      <GraphRefreshTrigger />
+
       {/* ====== HEADER ====== */}
       <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4">

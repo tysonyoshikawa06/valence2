@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Graph, { useGraphActions } from "../components/Graph";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 import Sidebar from "../components/Sidebar";
@@ -16,6 +16,12 @@ export default function Home() {
   });
 
   const { resetGraph, completeAllNodes } = useGraphActions();
+
+  // Trigger graph refresh when component mounts
+  useEffect(() => {
+    // Dispatch custom event to refresh graph
+    window.dispatchEvent(new Event("refreshGraph"));
+  }, []);
 
   if (loading) {
     return (
@@ -165,7 +171,7 @@ export default function Home() {
         setFilter={setFilter}
       />
 
-      {/* Main Content */}
+      {/* Main Content - Graph is always rendered and visible on home page */}
       <main className="pt-16 pl-0 transition-all duration-300">
         <div className="p-8">
           <Graph filter={filter} />
