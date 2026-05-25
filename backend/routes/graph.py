@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header, Depends
-from database import execute_query
+from database import execute_query, complete_and_unlock_node
 import jwt
 import os
 import json
@@ -114,34 +114,18 @@ async def get_single_node(node_id: str, user_id: str = Depends(get_current_user_
 async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id)):
     """Mark a node as completed and unlock all its neighbors"""
     try:
-        # Mark this node as completed
-        update_query = """
-            UPDATE user_nodes
-            SET is_completed = TRUE, updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = %s AND node_id = %s
-            RETURNING neighbors
-        """
-        result = execute_query(update_query, (user_id, node_id))
-        
-        if not result:
+        neighbors = complete_and_unlock_node(user_id, node_id)
+
+        if neighbors is None:
             raise HTTPException(status_code=404, detail="Node not found")
-        
-        neighbors = result[0]['neighbors']
-        
-        # Unlock all neighbors directly
-        if neighbors:
-            unlock_query = """
-                UPDATE user_nodes
-                SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s AND node_id = ANY(%s)
-            """
-            execute_query(unlock_query, (user_id, neighbors), fetch=False)
-        
+
         return {
             "message": "Node completed successfully",
             "unlocked_neighbors": neighbors
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error completing node: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 import os
 from openai import OpenAI
-from database import execute_query
+from database import execute_query, complete_and_unlock_node
 import jwt
 import json
 import asyncio
@@ -130,32 +130,11 @@ def process_curiosity_score(user_id: str, node_id: str, is_curious: bool):
             if result:
                 new_score = result[0]['curiosity_score']
                 print(f"✓ Curiosity score updated! New score: {new_score}")
-                
-                # Check if we just reached 5 - if so, complete the node
+
                 if new_score >= 5:
                     print(f"Score reached {new_score}! Completing node...")
-                    # Mark node as completed
-                    complete_query = """
-                        UPDATE user_nodes
-                        SET is_completed = TRUE, updated_at = CURRENT_TIMESTAMP
-                        WHERE user_id = %s AND node_id = %s
-                        RETURNING neighbors
-                    """
-                    complete_result = execute_query(complete_query, (user_id, node_id))
-                    
-                    if complete_result:
-                        neighbors = complete_result[0]['neighbors']
-                        print(f"✓ Node completed! Unlocking neighbors: {neighbors}")
-                        
-                        # Unlock all neighbors
-                        if neighbors:
-                            unlock_query = """
-                                UPDATE user_nodes
-                                SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
-                                WHERE user_id = %s AND node_id = ANY(%s)
-                            """
-                            execute_query(unlock_query, (user_id, neighbors), fetch=False)
-                            print(f"✓ Neighbors unlocked: {neighbors}")
+                    neighbors = complete_and_unlock_node(user_id, node_id) or []
+                    print(f"✓ Node completed! Unlocked neighbors: {neighbors}")
                             
     except Exception as e:
         print(f"ERROR processing curiosity score: {e}")

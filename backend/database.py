@@ -13,13 +13,13 @@ def get_db_connection():
     return conn
 
 def execute_query(query, params=None, fetch=True):
-    """Execute a SQL query"""
+    """Central data access utility. Every route handler calls this — do not add business logic here."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute(query, params)
-        
+
         if fetch:
             result = cursor.fetchall()
             conn.commit()
@@ -32,6 +32,32 @@ def execute_query(query, params=None, fetch=True):
     except Exception as e:
         conn.close()
         raise e
+
+
+def complete_and_unlock_node(user_id: str, node_id: str) -> list | None:
+    """Mark a node completed and unlock its neighbors.
+
+    Returns the list of unlocked neighbor IDs, or None if the node was not found.
+    """
+    complete_query = """
+        UPDATE user_nodes
+        SET is_completed = TRUE, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = %s AND node_id = %s
+        RETURNING neighbors
+    """
+    result = execute_query(complete_query, (user_id, node_id))
+    if not result:
+        return None
+
+    neighbors = result[0]['neighbors'] or []
+    if neighbors:
+        unlock_query = """
+            UPDATE user_nodes
+            SET is_unlocked = TRUE, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = %s AND node_id = ANY(%s)
+        """
+        execute_query(unlock_query, (user_id, neighbors), fetch=False)
+    return neighbors
 
 def init_db():
     """Initialize database with tables"""
