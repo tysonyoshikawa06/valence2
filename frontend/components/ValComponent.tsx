@@ -110,14 +110,22 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
 
       setMessages((prev) => [...prev, assistantMessage].slice(-10));
 
-      // Show curiosity notification if score increased
+      // Show curiosity notification and push new score to NodeProgress
       if (data.curiosity_increased) {
-        console.log("Curiosity increased! Showing notification");
         setCuriosityNotification(
           data.curiosity_reason ||
-            "Great question! Your curiosity score increased! 🌟"
+            "Great question! Your curiosity score increased!"
         );
         setTimeout(() => setCuriosityNotification(null), 5000);
+
+        window.dispatchEvent(
+          new CustomEvent("curiosityUpdate", {
+            detail: {
+              newScore: data.new_curiosity_score,
+              isCompleted: data.is_completed,
+            },
+          })
+        );
       }
     } catch (error) {
       console.error("Chat error:", error);

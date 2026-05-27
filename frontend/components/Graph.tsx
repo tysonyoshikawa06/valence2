@@ -259,16 +259,20 @@ export default function Graph({ filter }: GraphProps) {
         persistentCyInstance.mount(cyContainer.current);
         cyInstance.current = persistentCyInstance;
         instanceContainer = cyContainer.current;
-
-        if (cachedUserNodes) {
-          applyNodeStates(cachedUserNodes);
-        }
-
-        applyFilter();
-        setLoading(false);
         isInitialized.current = true;
 
-        await updateNodeColors(true);
+        if (cachedUserNodes) {
+          // Have cached data — show immediately, then refresh in background
+          applyNodeStates(cachedUserNodes);
+          applyFilter();
+          setLoading(false);
+          await updateNodeColors(true);
+        } else {
+          // No cache (came from node page) — fetch first so graph appears fully up-to-date
+          applyFilter();
+          await updateNodeColors(true);
+          setLoading(false);
+        }
         return;
       }
 

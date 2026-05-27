@@ -71,6 +71,25 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
     fetchNodeState();
   }, [nodeId]);
 
+  // Listen for immediate score updates pushed from ValComponent
+  useEffect(() => {
+    const handleCuriosityUpdate = (e: CustomEvent) => {
+      const { newScore, isCompleted } = e.detail;
+      if (newScore !== null && newScore !== undefined) {
+        setCuriosityScore(newScore);
+        if (isCompleted) {
+          setIsCompleted(true);
+          setShowCompletionMessage(true);
+          setTimeout(() => setShowCompletionMessage(false), 5000);
+        }
+        lastManualUpdate.current = Date.now();
+      }
+    };
+
+    window.addEventListener("curiosityUpdate", handleCuriosityUpdate as EventListener);
+    return () => window.removeEventListener("curiosityUpdate", handleCuriosityUpdate as EventListener);
+  }, []);
+
   // Poll for updates every second when unlocked and not completed
   useEffect(() => {
     if (!isUnlocked || isCompleted) return;

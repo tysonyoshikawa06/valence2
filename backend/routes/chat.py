@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import List
 import os
-from openai import OpenAI
+import anthropic
 from database import execute_query, complete_and_unlock_node
 import jwt
 import json
@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 
@@ -65,17 +65,14 @@ Examples of NOT curious questions:
 - "What's the formula for...?"
 """
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": evaluation_prompt},
-                {"role": "user", "content": question}
-            ],
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            system=evaluation_prompt,
+            messages=[{"role": "user", "content": question}],
             max_tokens=150,
-            temperature=0.3
         )
 
-        result_text = response.choices[0].message.content.strip()
+        result_text = response.content[0].text.strip()
         
         # Remove markdown code blocks if present
         if result_text.startswith("```json"):
@@ -90,56 +87,57 @@ Examples of NOT curious questions:
         print(f"Error evaluating curiosity: {e}")
         return {"is_curious": False, "reason": "Evaluation failed"}
 
-def get_chat_response(system_message: dict, openai_messages: list):
-    """Get chat response from OpenAI"""
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[system_message] + openai_messages,
+def get_chat_response(system_content: str, messages: list):
+    """Get chat response from Anthropic"""
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        system=system_content,
+        messages=messages,
         max_tokens=500,
-        temperature=0.7
     )
-    return response.choices[0].message.content
+    return response.content[0].text
 
-def process_curiosity_score(user_id: str, node_id: str, is_curious: bool):
-    """Background task to update curiosity score and completion status"""
-    if not is_curious:
-        return
-    
+def process_curiosity_score(user_id: str, node_id: str) -> dict:
+    """Update curiosity score and completion status. Returns new state."""
     try:
-        print(f"[Background] Processing curiosity score for {node_id}...")
         check_query = "SELECT curiosity_score, is_completed FROM user_nodes WHERE user_id = %s AND node_id = %s"
         check_result = execute_query(check_query, (user_id, node_id))
-        
+
         if not check_result:
-            print(f"ERROR: Node {node_id} not found for user {user_id}")
-            return
-        
+            return {"curiosity_score": None, "is_completed": False}
+
         current_score = check_result[0]['curiosity_score']
         is_already_completed = check_result[0]['is_completed']
-        print(f"Current curiosity score: {current_score}, Completed: {is_already_completed}")
-        
-        if current_score < 5 and not is_already_completed:
-            update_query = """
-                UPDATE user_nodes
-                SET curiosity_score = curiosity_score + 1,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s AND node_id = %s
-                RETURNING curiosity_score
-            """
-            result = execute_query(update_query, (user_id, node_id))
-            if result:
-                new_score = result[0]['curiosity_score']
-                print(f"✓ Curiosity score updated! New score: {new_score}")
 
-                if new_score >= 5:
-                    print(f"Score reached {new_score}! Completing node...")
-                    neighbors = complete_and_unlock_node(user_id, node_id) or []
-                    print(f"✓ Node completed! Unlocked neighbors: {neighbors}")
-                            
+        if current_score >= 5 or is_already_completed:
+            return {"curiosity_score": current_score, "is_completed": is_already_completed}
+
+        update_query = """
+            UPDATE user_nodes
+            SET curiosity_score = curiosity_score + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = %s AND node_id = %s
+            RETURNING curiosity_score
+        """
+        result = execute_query(update_query, (user_id, node_id))
+        if not result:
+            return {"curiosity_score": current_score, "is_completed": False}
+
+        new_score = result[0]['curiosity_score']
+        print(f"✓ Curiosity score updated: {new_score}")
+
+        if new_score >= 5:
+            neighbors = complete_and_unlock_node(user_id, node_id) or []
+            print(f"✓ Node completed! Unlocked neighbors: {neighbors}")
+            return {"curiosity_score": new_score, "is_completed": True}
+
+        return {"curiosity_score": new_score, "is_completed": False}
+
     except Exception as e:
         print(f"ERROR processing curiosity score: {e}")
         import traceback
         traceback.print_exc()
+        return {"curiosity_score": None, "is_completed": False}
 
 def save_chat_history_background(user_id: str, node_id: str, chat_history: list):
     """Background task to save chat history"""
@@ -188,26 +186,22 @@ async def chat(
         latest_question = user_messages[-1].content
         print(f"Latest question: {latest_question}")
         
-        # Convert messages to OpenAI format
-        openai_messages = [
+        # Convert messages to Anthropic format
+        anthropic_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in request.messages
         ]
-        
-        # System message
-        system_message = {
-            "role": "system",
-            "content": f"You are a helpful chemistry tutor discussing the topic: {request.node_id}. Keep responses concise and relevant (2-3 sentences)."
-        }
-        
+
+        system_content = f"You are a helpful chemistry tutor discussing the topic: {request.node_id}. Keep responses concise and relevant (2-3 sentences)."
+
         # OPTIMIZATION: Run both API calls in parallel
         loop = asyncio.get_event_loop()
-        
+
         chat_task = loop.run_in_executor(
             executor,
             get_chat_response,
-            system_message,
-            openai_messages
+            system_content,
+            anthropic_messages
         )
         
         curiosity_task = loop.run_in_executor(
@@ -219,45 +213,46 @@ async def chat(
         
         # Wait for both to complete
         assistant_message, curiosity_eval = await asyncio.gather(chat_task, curiosity_task)
-        
+
         print(f"Curiosity evaluation: {curiosity_eval}")
-        
+
         # Build updated chat history
         updated_messages = request.messages + [Message(role="assistant", content=assistant_message)]
         chat_history = [
             {"role": msg.role, "content": msg.content}
             for msg in updated_messages[-10:]
         ]
-        
-        # OPTIMIZATION: Save chat history in background
+
+        # Save chat history in background (doesn't affect response data)
         background_tasks.add_task(
             save_chat_history_background,
             user_id,
             request.node_id,
             chat_history
         )
-        
-        # OPTIMIZATION: Process curiosity score in background
+
+        # Process curiosity score inline so new score is returned with the response
         is_curious = curiosity_eval.get("is_curious", False)
-        background_tasks.add_task(
-            process_curiosity_score,
-            user_id,
-            request.node_id,
-            is_curious
-        )
-        
-        # Return response immediately
+        if is_curious:
+            score_result = await loop.run_in_executor(
+                executor, process_curiosity_score, user_id, request.node_id
+            )
+        else:
+            score_result = {"curiosity_score": None, "is_completed": False}
+
         response_data = {
             "message": assistant_message,
             "curiosity_increased": is_curious,
-            "curiosity_reason": curiosity_eval.get("reason") if is_curious else None
+            "curiosity_reason": curiosity_eval.get("reason") if is_curious else None,
+            "new_curiosity_score": score_result["curiosity_score"],
+            "is_completed": score_result["is_completed"],
         }
         
         print(f"Response sent to user (background tasks queued)")
         return response_data
         
     except Exception as e:
-        print(f"OpenAI API error: {e}")
+        print(f"Anthropic API error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

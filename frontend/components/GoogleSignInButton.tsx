@@ -16,7 +16,6 @@ export default function GoogleSignInButton() {
       onError={() => {
         console.log("Login Failed");
       }}
-      useOneTap
     />
   );
 }
