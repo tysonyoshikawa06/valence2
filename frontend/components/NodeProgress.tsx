@@ -81,6 +81,7 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
           setIsCompleted(true);
           setShowCompletionMessage(true);
           setTimeout(() => setShowCompletionMessage(false), 5000);
+          window.dispatchEvent(new Event("nodeCompleted"));
         }
         lastManualUpdate.current = Date.now();
       }
@@ -124,6 +125,7 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
       setIsCompleted(true);
       setShowCompletionMessage(true);
       setTimeout(() => setShowCompletionMessage(false), 5000);
+      window.dispatchEvent(new Event("nodeCompleted"));
     }
 
     // Fire and forget - don't wait for response

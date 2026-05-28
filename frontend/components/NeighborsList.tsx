@@ -29,7 +29,7 @@ interface NodeState {
 
 let cachedStates: Record<string, NodeState> = {};
 let lastFetchTime = 0;
-const CACHE_TTL = 2000; // 2 seconds
+const CACHE_TTL = 60000; // 60 seconds — states only change on nodeCompleted events
 
 // ============================================================================
 // MAIN COMPONENT
@@ -42,7 +42,6 @@ export default function NeighborsList({
   const [neighborStates, setNeighborStates] =
     useState<Record<string, NodeState>>(cachedStates);
   const [expandedNeighbor, setExpandedNeighbor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -54,17 +53,12 @@ export default function NeighborsList({
   const fetchNeighborStates = useCallback(
     async (forceRefresh = false) => {
       const token = localStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+      if (!token) return;
 
       const now = Date.now();
 
-      // Use cache if recent and not forcing refresh
-      if (!forceRefresh && cachedStates && now - lastFetchTime < CACHE_TTL) {
+      if (!forceRefresh && Object.keys(cachedStates).length > 0 && now - lastFetchTime < CACHE_TTL) {
         setNeighborStates(cachedStates);
-        setLoading(false);
         return;
       }
 
@@ -76,7 +70,6 @@ export default function NeighborsList({
         if (response.ok) {
           const data = await response.json();
 
-          // Build state map
           const states: Record<string, NodeState> = {};
           data.nodes.forEach((node: any) => {
             states[node.node_id] = {
@@ -85,22 +78,16 @@ export default function NeighborsList({
             };
           });
 
-          // Update cache
           cachedStates = states;
           lastFetchTime = now;
 
           setNeighborStates(states);
-          setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching neighbor states:", error);
-
-        // Fallback to cache if available
-        if (cachedStates && Object.keys(cachedStates).length > 0) {
+        if (Object.keys(cachedStates).length > 0) {
           setNeighborStates(cachedStates);
         }
-
-        setLoading(false);
       }
     },
     [API_URL]
@@ -112,38 +99,16 @@ export default function NeighborsList({
 
   // Initial fetch when component mounts or currentNodeId changes
   useEffect(() => {
-    setLoading(true);
     fetchNeighborStates();
-
-    // Delayed fetch to catch any just-completed nodes
-    const delayedFetch = setTimeout(() => {
-      fetchNeighborStates();
-    }, 500);
-
-    return () => clearTimeout(delayedFetch);
   }, [currentNodeId, fetchNeighborStates]);
 
-  // Poll for updates every 3 seconds
+  // Refetch when the current node completes (neighbors may have just been unlocked)
   useEffect(() => {
-    const pollInterval = setInterval(() => {
-      fetchNeighborStates();
-    }, 3000);
-
-    return () => clearInterval(pollInterval);
+    const handleNodeCompleted = () => fetchNeighborStates(true);
+    window.addEventListener("nodeCompleted", handleNodeCompleted);
+    return () => window.removeEventListener("nodeCompleted", handleNodeCompleted);
   }, [fetchNeighborStates]);
 
-  // Refresh on tab focus
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchNeighborStates(true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [fetchNeighborStates]);
 
   // ==========================================================================
   // EVENT HANDLERS
@@ -179,20 +144,6 @@ export default function NeighborsList({
   // ==========================================================================
   // RENDER
   // ==========================================================================
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <h2 className="text-lg font-semibold mb-4 text-gray-900">
-          Connected Concepts
-        </h2>
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-          <span>Loading...</span>
-        </div>
-      </div>
-    );
-  }
 
   if (neighbors.length === 0) {
     return (

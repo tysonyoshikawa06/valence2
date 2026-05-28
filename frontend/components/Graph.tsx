@@ -239,6 +239,59 @@ export default function Graph({ filter }: GraphProps) {
   }, [filter]);
 
   // ==========================================================================
+  // SETUP TAP HANDLERS
+  // Extracted so it can be called on both fresh init and persistent-instance
+  // reuse, ensuring handlers always close over the current component's state.
+  // ==========================================================================
+
+  const setupTapHandlers = useCallback(
+    (cy: Core) => {
+      cy.removeListener("tap");
+
+      cy.on("tap", "node", (event) => {
+        const node = event.target;
+        const isUnlocked = node.data("is_unlocked");
+
+        if (!isUnlocked) {
+          const pos = node.renderedPosition();
+          setLockedNode({ label: node.data("label"), x: pos.x, y: pos.y });
+          setTimeout(() => setLockedNode(null), 3000);
+          return;
+        }
+
+        router.push(`/${node.id()}`);
+      });
+
+      cy.on("tap", "edge", (event) => {
+        const edge = event.target;
+        const source = cy.getElementById(edge.data("source"));
+        const target = cy.getElementById(edge.data("target"));
+
+        const sourcePos = source.renderedPosition();
+        const targetPos = target.renderedPosition();
+        const x = (sourcePos.x + targetPos.x) / 2;
+        const y = (sourcePos.y + targetPos.y) / 2;
+
+        setSelectedEdge({
+          source: source.data("label") || edge.data("source"),
+          target: target.data("label") || edge.data("target"),
+          description: edge.data("description") || "No description available",
+          x,
+          y,
+        });
+      });
+
+      cy.on("tap", (event) => {
+        if (event.target === cy) {
+          setSelectedEdge(null);
+          setLockedNode(null);
+        }
+      });
+    },
+    [router]
+  );
+
+  // ==========================================================================
   // INITIALIZE GRAPH
   // ==========================================================================
 
@@ -254,25 +307,18 @@ export default function Graph({ filter }: GraphProps) {
 
       // Reuse persistent instance if available
       if (persistentCyInstance && cyContainer.current) {
-        console.log("♻️ Reusing existing Cytoscape instance");
-
         persistentCyInstance.mount(cyContainer.current);
         cyInstance.current = persistentCyInstance;
         instanceContainer = cyContainer.current;
         isInitialized.current = true;
 
-        if (cachedUserNodes) {
-          // Have cached data — show immediately, then refresh in background
-          applyNodeStates(cachedUserNodes);
-          applyFilter();
-          setLoading(false);
-          await updateNodeColors(true);
-        } else {
-          // No cache (came from node page) — fetch first so graph appears fully up-to-date
-          applyFilter();
-          await updateNodeColors(true);
-          setLoading(false);
-        }
+        // Re-register handlers so closures reference this component's state
+        setupTapHandlers(persistentCyInstance);
+
+        if (cachedUserNodes) applyNodeStates(cachedUserNodes);
+        applyFilter();
+        setLoading(false);
+        await updateNodeColors(true);
         return;
       }
 
@@ -321,7 +367,7 @@ export default function Graph({ filter }: GraphProps) {
               'node[unit = "Unit 1: Atomic Structures and Properties"].locked',
             style: {
               "background-color": "#9ca3af",
-              cursor: "not-allowed",
+              cursor: "default",
             } as any,
           },
           {
@@ -345,7 +391,7 @@ export default function Graph({ filter }: GraphProps) {
               'node[unit = "Unit 2: Compound Structure and Properties"].locked',
             style: {
               "background-color": "#9ca3af",
-              cursor: "not-allowed",
+              cursor: "default",
             } as any,
           },
           {
@@ -409,45 +455,7 @@ export default function Graph({ filter }: GraphProps) {
         applyNodeStates(cachedUserNodes);
       }
 
-      cy.on("tap", "node", (event) => {
-        const node = event.target;
-        const isUnlocked = node.data("is_unlocked");
-
-        if (!isUnlocked) {
-          const pos = node.renderedPosition();
-          setLockedNode({
-            label: node.data("label"),
-            x: pos.x,
-            y: pos.y,
-          });
-          setTimeout(() => setLockedNode(null), 3000);
-          return;
-        }
-
-        router.push(`/${node.id()}`);
-      });
-
-      cy.on("tap", "edge", (event) => {
-        const edge = event.target;
-        const source = cy.getElementById(edge.data("source"));
-        const target = cy.getElementById(edge.data("target"));
-        const pos = event.renderedPosition || event.position;
-
-        setSelectedEdge({
-          source: source.data("label") || edge.data("source"),
-          target: target.data("label") || edge.data("target"),
-          description: edge.data("description") || "No description available",
-          x: pos.x,
-          y: pos.y,
-        });
-      });
-
-      cy.on("tap", (event) => {
-        if (event.target === cy) {
-          setSelectedEdge(null);
-          setLockedNode(null);
-        }
-      });
+      setupTapHandlers(cy);
 
       cyInstance.current = cy;
       persistentCyInstance = cy;
@@ -466,7 +474,7 @@ export default function Graph({ filter }: GraphProps) {
       console.error("Error initializing graph:", error);
       setLoading(false);
     }
-  }, [API_URL, router, applyNodeStates, updateNodeColors, applyFilter]);
+  }, [API_URL, router, applyNodeStates, updateNodeColors, applyFilter, setupTapHandlers]);
 
   // ==========================================================================
   // EFFECTS
@@ -479,13 +487,13 @@ export default function Graph({ filter }: GraphProps) {
   }, [initializeGraph]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const handleNodeCompleted = () => {
       if (cyInstance.current && isInitialized.current) {
-        updateNodeColors();
+        updateNodeColors(true);
       }
-    }, 3000);
-
-    return () => clearInterval(interval);
+    };
+    window.addEventListener("nodeCompleted", handleNodeCompleted);
+    return () => window.removeEventListener("nodeCompleted", handleNodeCompleted);
   }, [updateNodeColors]);
 
   useEffect(() => {
