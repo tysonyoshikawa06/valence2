@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from database import init_db
+from database import init_db, pool
 from routes import auth, chat, graph
 from dotenv import load_dotenv
 import os
@@ -13,11 +13,10 @@ PORT = int(os.getenv("PORT", 8000))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    pool.open(wait=True)
     init_db()
-    # Where the server runs
     yield
-    # Shutdown code
+    pool.close()
 
 app = FastAPI(title="Knowledge Graph API", lifespan=lifespan)
 

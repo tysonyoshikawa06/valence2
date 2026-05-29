@@ -15,6 +15,8 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 
+MAX_CHAT_HISTORY = 15
+
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -186,10 +188,10 @@ async def chat(
         latest_question = user_messages[-1].content
         print(f"Latest question: {latest_question}")
         
-        # Convert messages to Anthropic format
+        # Convert messages to Anthropic format, capped to last MAX_CHAT_HISTORY
         anthropic_messages = [
             {"role": msg.role, "content": msg.content}
-            for msg in request.messages
+            for msg in request.messages[-MAX_CHAT_HISTORY:]
         ]
 
         system_content = f"You are a helpful chemistry tutor discussing the topic: {request.node_id}. Keep responses concise and relevant (2-3 sentences)."
@@ -220,7 +222,7 @@ async def chat(
         updated_messages = request.messages + [Message(role="assistant", content=assistant_message)]
         chat_history = [
             {"role": msg.role, "content": msg.content}
-            for msg in updated_messages[-10:]
+            for msg in updated_messages[-MAX_CHAT_HISTORY:]
         ]
 
         # Save chat history in background (doesn't affect response data)
