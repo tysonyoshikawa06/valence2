@@ -13,8 +13,6 @@ interface FilterState {
 }
 
 interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
   filter: FilterState;
   setFilter: (filter: FilterState) => void;
 }
@@ -38,16 +36,9 @@ interface GraphNode {
 // MAIN SIDEBAR COMPONENT
 // ============================================================================
 
-export default function Sidebar({
-  isOpen,
-  onClose,
-  filter,
-  setFilter,
-}: SidebarProps) {
+export default function Sidebar({ filter, setFilter }: SidebarProps) {
   const [nodes, setNodes] = useState<NodeData[]>([]);
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[] } | null>(
-    null
-  );
+  const [graphData, setGraphData] = useState<{ nodes: GraphNode[] } | null>(null);
   const [showAllUpNext, setShowAllUpNext] = useState(false);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const router = useRouter();
@@ -68,12 +59,11 @@ export default function Sidebar({
         console.error("Error fetching graph structure:", error);
       }
     };
-
     fetchGraphStructure();
   }, []);
 
   // ==========================================================================
-  // FETCH USER NODES (when sidebar opens)
+  // FETCH USER NODES
   // ==========================================================================
 
   const fetchNodes = useCallback(async () => {
@@ -87,18 +77,10 @@ export default function Sidebar({
 
       if (response.ok) {
         const data = await response.json();
-
-        // Enrich with unit information
         const enrichedNodes = data.nodes.map((node: NodeData) => {
-          const graphNode = graphData.nodes.find(
-            (gn) => gn.data.id === node.node_id
-          );
-          return {
-            ...node,
-            unit: graphNode?.data.unit,
-          };
+          const graphNode = graphData.nodes.find((gn) => gn.data.id === node.node_id);
+          return { ...node, unit: graphNode?.data.unit };
         });
-
         setNodes(enrichedNodes);
       }
     } catch (error) {
@@ -107,47 +89,30 @@ export default function Sidebar({
   }, [API_URL, graphData]);
 
   useEffect(() => {
-    if (isOpen && graphData) {
-      fetchNodes();
-    }
-  }, [isOpen, graphData, fetchNodes]);
+    if (graphData) fetchNodes();
+  }, [graphData, fetchNodes]);
 
   // ==========================================================================
-  // HELPER FUNCTIONS
+  // HELPERS
   // ==========================================================================
 
-  const getNodeColor = (unit?: string, isCompleted?: boolean): string => {
-    if (!unit) return "bg-gray-400";
-
-    if (unit.includes("Unit 1")) {
-      return isCompleted ? "bg-blue-900" : "bg-blue-500";
-    } else if (unit.includes("Unit 2")) {
-      return isCompleted ? "bg-red-900" : "bg-red-500";
-    }
-
-    return "bg-gray-400";
+  const getNodeDot = (unit?: string, isCompleted?: boolean): string => {
+    if (!unit) return "bg-[#93a0ba]";
+    if (unit.includes("Unit 1")) return isCompleted ? "bg-[#001554]/80" : "bg-[#001554]/80";
+    if (unit.includes("Unit 2")) return isCompleted ? "bg-[#b91c1c]/80" : "bg-[#b91c1c]/80";
+    return "bg-[#93a0ba]";
   };
 
-  const formatNodeLabel = (nodeId: string): string => {
-    return nodeId
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
+  const formatNodeLabel = (nodeId: string): string =>
+    nodeId.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
-  const filterByUnit = (nodeList: NodeData[]): NodeData[] => {
-    return nodeList.filter((node) => {
+  const filterByUnit = (nodeList: NodeData[]): NodeData[] =>
+    nodeList.filter((node) => {
       if (!node.unit) return true;
-
-      const isUnit1 = node.unit.includes("Unit 1");
-      const isUnit2 = node.unit.includes("Unit 2");
-
-      if (isUnit1 && !filter.unit1) return false;
-      if (isUnit2 && !filter.unit2) return false;
-
+      if (node.unit.includes("Unit 1") && !filter.unit1) return false;
+      if (node.unit.includes("Unit 2") && !filter.unit2) return false;
       return true;
     });
-  };
 
   const handleFilterChange = (unit: "unit1" | "unit2", checked: boolean) => {
     setFilter({ ...filter, [unit]: checked });
@@ -157,203 +122,136 @@ export default function Sidebar({
 
   const handleNodeClick = (nodeId: string) => {
     router.push(`/${nodeId}`);
-    onClose();
   };
 
   // ==========================================================================
-  // COMPUTE FILTERED LISTS
+  // COMPUTED LISTS
   // ==========================================================================
 
-  const upNextNodes = filterByUnit(
-    nodes.filter((n) => n.is_unlocked && !n.is_completed)
-  );
-
+  const upNextNodes = filterByUnit(nodes.filter((n) => n.is_unlocked && !n.is_completed));
   const completedNodes = filterByUnit(nodes.filter((n) => n.is_completed));
-
   const displayedUpNext = showAllUpNext ? upNextNodes : upNextNodes.slice(0, 5);
-  const displayedCompleted = showAllCompleted
-    ? completedNodes
-    : completedNodes.slice(0, 5);
+  const displayedCompleted = showAllCompleted ? completedNodes : completedNodes.slice(0, 5);
 
   // ==========================================================================
   // RENDER
   // ==========================================================================
 
   return (
-    <aside
-      className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 z-40 overflow-y-auto ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
-    >
+    <aside className="fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-[#93a0ba]/20 z-40 overflow-y-auto">
       <div className="p-4">
-        {/* ====== FILTER SECTION ====== */}
+        {/* ====== FILTER ====== */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-semibold">Filter</span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#93a0ba]">Filter</span>
+            <span className="text-xs text-[#93a0ba]">
               {upNextNodes.length + completedNodes.length} nodes
             </span>
           </div>
 
-          <div className="space-y-2">
-            {/* Unit 1 */}
-            <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:bg-[#edf9fe] p-2 rounded-lg transition-colors">
               <input
                 type="checkbox"
                 checked={filter.unit1}
                 onChange={(e) => handleFilterChange("unit1", e.target.checked)}
-                className="rounded"
+                className="rounded accent-[#001554] cursor-pointer"
               />
-              <span className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-sm">Unit 1: Atomic Structures</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#001554]" />
+              <span className="text-sm text-[#001554]">Unit 1: Atomic Structures</span>
             </label>
 
-            {/* Unit 2 */}
-            <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:bg-[#edf9fe] p-2 rounded-lg transition-colors">
               <input
                 type="checkbox"
                 checked={filter.unit2}
                 onChange={(e) => handleFilterChange("unit2", e.target.checked)}
-                className="rounded"
+                className="rounded accent-[#001554] cursor-pointer"
               />
-              <span className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-sm">Unit 2: Compound Structure</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+              <span className="text-sm text-[#001554]">Unit 2: Compound Structure</span>
             </label>
           </div>
         </div>
 
-        {/* ====== UP NEXT SECTION ====== */}
+        {/* ====== UP NEXT ====== */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold">Up Next</h2>
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </div>
-            <span className="text-xs text-gray-500">{upNextNodes.length}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#93a0ba]">Up Next</span>
+            <span className="text-xs text-[#93a0ba]">{upNextNodes.length}</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {displayedUpNext.map((node) => (
               <button
                 key={node.node_id}
                 onClick={() => handleNodeClick(node.node_id)}
-                className="flex items-center gap-2 w-full text-left p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2.5 w-full text-left px-2 py-2 rounded-lg hover:bg-[#edf9fe] transition-colors cursor-pointer"
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${getNodeColor(
-                    node.unit,
-                    false
-                  )}`}
-                />
-                <span className="text-sm truncate">
-                  {formatNodeLabel(node.node_id)}
-                </span>
+                <span className={`w-2 h-2 flex-shrink-0 rounded-full ${getNodeDot(node.unit, false)}`} />
+                <span className="text-sm text-[#001554] truncate">{formatNodeLabel(node.node_id)}</span>
               </button>
             ))}
 
             {upNextNodes.length > 5 && !showAllUpNext && (
               <button
                 onClick={() => setShowAllUpNext(true)}
-                className="text-sm text-blue-600 hover:text-blue-800 pl-2"
+                className="text-xs text-[#93a0ba] hover:text-[#001554] pl-2 pt-1 transition-colors cursor-pointer"
               >
-                Show All ({upNextNodes.length})
+                Show all ({upNextNodes.length})
               </button>
             )}
-
             {showAllUpNext && upNextNodes.length > 5 && (
               <button
                 onClick={() => setShowAllUpNext(false)}
-                className="text-sm text-blue-600 hover:text-blue-800 pl-2"
+                className="text-xs text-[#93a0ba] hover:text-[#001554] pl-2 pt-1 transition-colors cursor-pointer"
               >
-                Show Less
+                Show less
               </button>
             )}
-
             {upNextNodes.length === 0 && (
-              <p className="text-sm text-gray-500 italic pl-2">
-                No nodes available
-              </p>
+              <p className="text-xs text-[#93a0ba] italic pl-2">No nodes available</p>
             )}
           </div>
         </div>
 
-        {/* ====== COMPLETED SECTION ====== */}
+        {/* ====== COMPLETED ====== */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold">Completed</h2>
-              <svg
-                className="w-4 h-4 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <span className="text-xs text-gray-500">
-              {completedNodes.length}
-            </span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#93a0ba]">Completed</span>
+            <span className="text-xs text-[#93a0ba]">{completedNodes.length}</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {displayedCompleted.map((node) => (
               <button
                 key={node.node_id}
                 onClick={() => handleNodeClick(node.node_id)}
-                className="flex items-center gap-2 w-full text-left p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2.5 w-full text-left px-2 py-2 rounded-lg hover:bg-[#edf9fe] transition-colors cursor-pointer"
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${getNodeColor(
-                    node.unit,
-                    true
-                  )}`}
-                />
-                <span className="text-sm truncate">
-                  {formatNodeLabel(node.node_id)}
-                </span>
+                <span className={`w-2 h-2 flex-shrink-0 rounded-full ${getNodeDot(node.unit, true)}`} />
+                <span className="text-sm text-[#001554] truncate">{formatNodeLabel(node.node_id)}</span>
               </button>
             ))}
 
             {completedNodes.length > 5 && !showAllCompleted && (
               <button
                 onClick={() => setShowAllCompleted(true)}
-                className="text-sm text-blue-600 hover:text-blue-800 pl-2"
+                className="text-xs text-[#93a0ba] hover:text-[#001554] pl-2 pt-1 transition-colors cursor-pointer"
               >
-                Show All ({completedNodes.length})
+                Show all ({completedNodes.length})
               </button>
             )}
-
             {showAllCompleted && completedNodes.length > 5 && (
               <button
                 onClick={() => setShowAllCompleted(false)}
-                className="text-sm text-blue-600 hover:text-blue-800 pl-2"
+                className="text-xs text-[#93a0ba] hover:text-[#001554] pl-2 pt-1 transition-colors cursor-pointer"
               >
-                Show Less
+                Show less
               </button>
             )}
-
             {completedNodes.length === 0 && (
-              <p className="text-sm text-gray-500 italic pl-2">
-                No completed nodes yet
-              </p>
+              <p className="text-xs text-[#93a0ba] italic pl-2">No completed nodes yet</p>
             )}
           </div>
         </div>

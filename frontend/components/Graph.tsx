@@ -59,13 +59,7 @@ export const useGraphActions = () => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const resetGraph = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to reset the graph? All progress will be lost."
-      )
-    ) {
-      return;
-    }
+    if (!confirm("Are you sure you want to reset the graph? All progress will be lost.")) return;
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -78,21 +72,14 @@ export const useGraphActions = () => {
 
       cachedUserNodes = null;
       lastFetchTime = 0;
-
-      window.location.reload();
+      window.dispatchEvent(new Event("refreshGraph"));
     } catch (error) {
       console.error("Error resetting graph:", error);
     }
   };
 
   const completeAllNodes = async () => {
-    if (
-      !confirm(
-        "This will complete all nodes and unlock the entire graph. Continue?"
-      )
-    ) {
-      return;
-    }
+    if (!confirm("This will complete all nodes and unlock the entire graph. Continue?")) return;
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -105,8 +92,7 @@ export const useGraphActions = () => {
 
       cachedUserNodes = null;
       lastFetchTime = 0;
-
-      window.location.reload();
+      window.dispatchEvent(new Event("refreshGraph"));
     } catch (error) {
       console.error("Error completing all nodes:", error);
     }
@@ -247,6 +233,15 @@ export default function Graph({ filter }: GraphProps) {
   const setupTapHandlers = useCallback(
     (cy: Core) => {
       cy.removeListener("tap");
+      cy.removeListener("mouseover");
+      cy.removeListener("mouseout");
+
+      cy.on("mouseover", "node, edge", () => {
+        if (cyContainer.current) cyContainer.current.style.cursor = "pointer";
+      });
+      cy.on("mouseout", "node, edge", () => {
+        if (cyContainer.current) cyContainer.current.style.cursor = "default";
+      });
 
       cy.on("tap", "node", (event) => {
         const node = event.target;
@@ -359,22 +354,24 @@ export default function Graph({ filter }: GraphProps) {
               "text-valign": "center",
               "text-halign": "center",
               "background-color": "#9ca3af",
+              "background-opacity": 0.4,
               "font-size": "12px",
-            },
+              cursor: "pointer",
+            } as any,
           },
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].locked',
             style: {
               "background-color": "#9ca3af",
-              cursor: "default",
             } as any,
           },
           {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.incomplete',
             style: {
-              "background-color": "#93c5fd",
+              "background-color": "#001554",
+              "background-opacity": 0.8,
               cursor: "pointer",
             } as any,
           },
@@ -382,7 +379,8 @@ export default function Graph({ filter }: GraphProps) {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.complete',
             style: {
-              "background-color": "#1e40af",
+              "background-color": "#001554",
+              "background-opacity": 0.8,
               cursor: "pointer",
             } as any,
           },
@@ -391,14 +389,14 @@ export default function Graph({ filter }: GraphProps) {
               'node[unit = "Unit 2: Compound Structure and Properties"].locked',
             style: {
               "background-color": "#9ca3af",
-              cursor: "default",
             } as any,
           },
           {
             selector:
               'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.incomplete',
             style: {
-              "background-color": "#fca5a5",
+              "background-color": "#b91c1c",
+              "background-opacity": 0.8,
               cursor: "pointer",
             } as any,
           },
@@ -407,6 +405,7 @@ export default function Graph({ filter }: GraphProps) {
               'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.complete',
             style: {
               "background-color": "#b91c1c",
+              "background-opacity": 0.8,
               cursor: "pointer",
             } as any,
           },
@@ -417,7 +416,8 @@ export default function Graph({ filter }: GraphProps) {
               "line-color": "#999",
               "target-arrow-color": "#999",
               width: 2,
-            },
+              cursor: "pointer",
+            } as any,
           },
           {
             selector: "edge:hover",

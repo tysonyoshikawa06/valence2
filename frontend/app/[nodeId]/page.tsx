@@ -49,42 +49,26 @@ interface Neighbor {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS
+// HELPERS
 // ============================================================================
 
-/**
- * Load graph structure from JSON file
- */
 function loadGraphData(): Graph {
   const filePath = path.join(process.cwd(), "public", "data", "apchem.json");
-  const fileContents = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(fileContents);
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
-/**
- * Find a node by ID
- */
 function findNode(graph: Graph, nodeId: string): GraphNode | undefined {
   return graph.nodes.find((n) => n.data.id === nodeId);
 }
 
-/**
- * Get all neighbors of a node with edge descriptions
- */
 function getNodeNeighbors(graph: Graph, nodeId: string): Neighbor[] {
   const neighbors: Neighbor[] = [];
 
   graph.edges.forEach((edge) => {
-    // Determine if this edge connects to our node
     let neighborId: string | null = null;
+    if (edge.data.source === nodeId) neighborId = edge.data.target;
+    else if (edge.data.target === nodeId) neighborId = edge.data.source;
 
-    if (edge.data.source === nodeId) {
-      neighborId = edge.data.target;
-    } else if (edge.data.target === nodeId) {
-      neighborId = edge.data.source;
-    }
-
-    // If connected, add neighbor info
     if (neighborId) {
       const neighborNode = findNode(graph, neighborId);
       if (neighborNode) {
@@ -100,20 +84,11 @@ function getNodeNeighbors(graph: Graph, nodeId: string): Neighbor[] {
   return neighbors;
 }
 
-/**
- * Load and compile MDX content
- */
 async function loadMDXContent(nodeId: string) {
   const contentPath = path.join(process.cwd(), "content", `${nodeId}.mdx`);
+  if (!fs.existsSync(contentPath)) return null;
 
-  // Check if file exists
-  if (!fs.existsSync(contentPath)) {
-    return null;
-  }
-
-  // Read and compile
   const mdxSource = fs.readFileSync(contentPath, "utf-8");
-
   const { content } = await compileMDX({
     source: mdxSource,
     options: {
@@ -123,35 +98,27 @@ async function loadMDXContent(nodeId: string) {
       },
     },
   });
-
   return content;
 }
 
 // ============================================================================
-// MAIN PAGE COMPONENT
+// PAGE
 // ============================================================================
 
 export default async function NodePage({ params }: NodePageProps) {
-  // Await params (Next.js 15+ requirement)
   const { nodeId } = await params;
 
-  // Load graph data
   const graph = loadGraphData();
-
-  // Get node information
   const node = findNode(graph, nodeId);
+
   if (!node) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#edf9fe] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Node Not Found
-          </h1>
-          <p className="text-gray-600 mb-4">
-            The node "{nodeId}" does not exist.
-          </p>
+          <h1 className="text-2xl font-bold text-[#001554] mb-2">Node Not Found</h1>
+          <p className="text-[#93a0ba] mb-4">The node "{nodeId}" does not exist.</p>
           <Link href="/">
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+            <button className="px-4 py-2 bg-[#001554] text-white rounded-lg hover:bg-[#001554]/80 transition-colors cursor-pointer">
               Return to Graph
             </button>
           </Link>
@@ -162,60 +129,37 @@ export default async function NodePage({ params }: NodePageProps) {
 
   const nodeLabel = node.data.label;
   const nodeUnit = node.data.unit;
-
-  // Get neighbors
   const neighbors = getNodeNeighbors(graph, nodeId);
-
-  // Load MDX content
   const content = await loadMDXContent(nodeId);
 
-  // Handle missing content
   if (!content) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Graph Refresh Trigger */}
+      <div className="min-h-screen bg-[#edf9fe]">
         <GraphRefreshTrigger />
 
-        {/* Header */}
-        <div className="bg-white border-b sticky top-0 z-10">
+        <header className="bg-[#001554] sticky top-0 z-10">
           <div className="container mx-auto px-4 py-4">
             <Link href="/">
-              <button className="text-blue-600 hover:text-blue-800 font-medium mb-2 flex items-center gap-1">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
+              <button className="text-[#93a0ba] hover:text-white font-medium mb-2 flex items-center gap-1 transition-colors cursor-pointer text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                Return to Graph
+                Back to Graph
               </button>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {nodeUnit}: {nodeLabel}
-            </h1>
+            <h1 className="text-2xl font-bold text-white">{nodeUnit}: {nodeLabel}</h1>
           </div>
-        </div>
+        </header>
 
-        {/* Content Missing Message */}
         <div className="container mx-auto px-4 py-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-sm p-8 text-center">
-            <div className="text-6xl mb-4">📝</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Content Coming Soon
-            </h2>
-            <p className="text-gray-600 mb-6">
-              The educational content for <strong>{nodeLabel}</strong> is
-              currently being developed.
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm p-8 text-center">
+            <div className="text-5xl mb-4">📝</div>
+            <h2 className="text-xl font-bold text-[#001554] mb-2">Content Coming Soon</h2>
+            <p className="text-[#93a0ba] mb-6">
+              The educational content for <strong>{nodeLabel}</strong> is currently being developed.
             </p>
             <Link href="/">
-              <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+              <button className="px-4 py-2 bg-[#001554] text-white rounded-lg hover:bg-[#001554]/80 transition-colors cursor-pointer">
                 Return to Graph
               </button>
             </Link>
@@ -225,80 +169,61 @@ export default async function NodePage({ params }: NodePageProps) {
     );
   }
 
-  // ============================================================================
-  // RENDER FULL PAGE
-  // ============================================================================
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Graph Refresh Trigger - Client component that refreshes graph */}
+    <div className="min-h-screen bg-[#edf9fe]">
       <GraphRefreshTrigger />
 
-      {/* ====== HEADER ====== */}
-      <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
+      {/* Header */}
+      <header className="bg-[#001554] sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <Link href="/">
-            <button className="text-blue-600 hover:text-blue-800 font-medium mb-2 flex items-center gap-1 transition-colors">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
+            <button className="text-[#93a0ba] hover:text-white font-medium mb-1.5 flex items-center gap-1 transition-colors cursor-pointer text-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Return to Graph
+              Back to Graph
             </button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {nodeUnit}: {nodeLabel}
-          </h1>
+          <h1 className="text-2xl font-bold text-white">{nodeUnit}: {nodeLabel}</h1>
         </div>
       </header>
 
-      {/* ====== 3-COLUMN LAYOUT ====== */}
+      {/* 3-column layout */}
       <main className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* ====== LEFT SIDEBAR - NEIGHBORS ====== */}
+          {/* Left: Neighbors */}
           <aside className="lg:col-span-3">
             <div className="lg:sticky lg:top-24">
               <NeighborsList neighbors={neighbors} currentNodeId={nodeId} />
             </div>
           </aside>
 
-          {/* ====== MIDDLE - MAIN CONTENT ====== */}
+          {/* Center: MDX content */}
           <section className="lg:col-span-6">
-            {/* Progress Component */}
-            <div className="mb-6">
-              <NodeProgress nodeId={nodeId} />
-            </div>
-
-            {/* MDX Content */}
-            <article className="bg-white rounded-lg shadow-sm p-6 lg:p-8">
-              <div className="prose prose-lg prose-blue max-w-none">
+            <article className="bg-white rounded-xl shadow-sm p-6 lg:p-8">
+              <div className="prose prose-lg max-w-none prose-headings:text-[#001554] prose-a:text-[#001554]">
                 {content}
               </div>
             </article>
           </section>
 
-          {/* ====== RIGHT SIDEBAR - CHAT ====== */}
+          {/* Right: Chat + Progress */}
           <aside className="lg:col-span-3">
-            <div className="lg:sticky lg:top-24">
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">V</span>
+            <div className="lg:sticky lg:top-24 space-y-3">
+              {/* Val chat */}
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 bg-[#001554] rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">V</span>
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Chat with Val
-                  </h2>
+                  <h2 className="text-base font-semibold text-[#001554]">Chat with Val</h2>
                 </div>
                 <ValComponent nodeLabel={nodeLabel} nodeId={nodeId} />
+              </div>
+
+              {/* Progress bar — below chat */}
+              <div className="bg-white rounded-xl shadow-sm px-4 py-3">
+                <NodeProgress nodeId={nodeId} />
               </div>
             </div>
           </aside>

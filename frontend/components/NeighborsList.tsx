@@ -147,23 +147,11 @@ export default function NeighborsList({
 
   if (neighbors.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <h2 className="text-lg font-semibold mb-4 text-gray-900">
-          Connected Concepts
-        </h2>
-        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-          <svg
-            className="w-12 h-12 mb-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <h2 className="text-base font-semibold mb-4 text-[#001554]">Connected Concepts</h2>
+        <div className="flex flex-col items-center justify-center py-8 text-[#93a0ba]">
+          <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           <p className="text-sm">No connected concepts</p>
         </div>
@@ -172,19 +160,17 @@ export default function NeighborsList({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
+    <div className="bg-white rounded-xl shadow-sm p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Connected Concepts
-        </h2>
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-semibold text-[#001554]">Connected Concepts</h2>
+        <span className="text-xs text-[#93a0ba] bg-[#edf9fe] px-2 py-0.5 rounded-full">
           {neighbors.length}
         </span>
       </div>
 
       {/* Neighbors List */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {enrichedNeighbors.map((neighbor) => (
           <NeighborCard
             key={neighbor.nodeId}
@@ -226,86 +212,53 @@ function NeighborCard({ neighbor, onToggle, onVisit }: NeighborCardProps) {
   } = neighbor;
 
   return (
-    <div className="border rounded-lg overflow-hidden transition-all hover:shadow-md">
+    <div className="border border-[#93a0ba]/15 rounded-xl overflow-hidden transition-all hover:shadow-sm">
       {/* Header */}
       <button
         onClick={() => onToggle(nodeId)}
-        className="w-full text-left p-3 hover:bg-gray-50 transition-colors"
+        className="w-full text-left p-3 hover:bg-[#edf9fe] transition-colors cursor-pointer"
         aria-expanded={isExpanded}
         aria-controls={`neighbor-${nodeId}`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Status Icons */}
             {isCompleted && (
-              <span
-                className="text-green-600 text-lg flex-shrink-0"
-                title="Completed"
-              >
-                ✓
-              </span>
+              <span className="text-[#001554] text-sm flex-shrink-0" title="Completed">✓</span>
             )}
             {!isUnlocked && (
-              <span
-                className="text-gray-400 text-lg flex-shrink-0"
-                title="Locked"
-              >
-                🔒
-              </span>
+              <span className="text-[#93a0ba] text-sm flex-shrink-0" title="Locked">🔒</span>
             )}
-
-            {/* Label */}
             <span
-              className={`font-medium truncate ${
-                isCompleted
-                  ? "text-green-700"
-                  : isUnlocked
-                  ? "text-gray-900"
-                  : "text-gray-400"
+              className={`text-sm font-medium truncate ${
+                isCompleted ? "text-[#001554]" : isUnlocked ? "text-[#001554]" : "text-[#93a0ba]"
               }`}
             >
               {label}
             </span>
           </div>
 
-          {/* Expand Arrow */}
           <svg
-            className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
-              isExpanded ? "rotate-90" : ""
-            }`}
+            className={`w-3.5 h-3.5 text-[#93a0ba] transition-transform flex-shrink-0 ${isExpanded ? "rotate-90" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
       </button>
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div
-          id={`neighbor-${nodeId}`}
-          className="border-t bg-gray-50 p-3 space-y-3 animate-fade-in"
-        >
-          {/* Edge Description */}
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {edgeDescription}
-          </p>
-
-          {/* Visit Button */}
+        <div id={`neighbor-${nodeId}`} className="border-t border-[#93a0ba]/10 bg-[#edf9fe] p-3 space-y-3">
+          <p className="text-sm text-[#93a0ba] leading-relaxed">{edgeDescription}</p>
           <button
             onClick={() => onVisit(nodeId)}
             disabled={!isUnlocked}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-all ${
+            className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-all ${
               isUnlocked
-                ? "bg-blue-500 text-white hover:bg-blue-600 hover:shadow-md active:scale-95"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                ? "bg-[#001554] text-white hover:bg-[#001554]/80 cursor-pointer active:scale-95"
+                : "bg-[#93a0ba]/20 text-[#93a0ba] cursor-not-allowed"
             }`}
           >
             {isUnlocked ? "Visit Node →" : "🔒 Locked"}

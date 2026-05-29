@@ -13,31 +13,21 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-  const lastManualUpdate = useRef<number>(0); // Track last manual update time
+  const [adminOpen, setAdminOpen] = useState(false);
+  const lastManualUpdate = useRef<number>(0);
   const router = useRouter();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // Fetch single node state
   const fetchNodeState = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) { router.push("/login"); return; }
 
-    // Skip polling if we just did a manual update (wait 2 seconds)
-    const timeSinceUpdate = Date.now() - lastManualUpdate.current;
-    if (timeSinceUpdate < 2000) {
-      console.log("Skipping poll - recent manual update");
-      return;
-    }
+    if (Date.now() - lastManualUpdate.current < 2000) return;
 
     try {
       const response = await fetch(`${API_URL}/api/user-nodes/${nodeId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.status === 401) {
@@ -48,15 +38,13 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
 
       if (response.ok) {
         const node = await response.json();
-
         setCuriosityScore(node.curiosity_score);
         setIsCompleted(node.is_completed);
         setIsUnlocked(node.is_unlocked);
 
-        // Show completion message if just completed
         if (node.is_completed && !isCompleted) {
           setShowCompletionMessage(true);
-          setTimeout(() => setShowCompletionMessage(false), 5000);
+          setTimeout(() => setShowCompletionMessage(false), 4000);
         }
       }
     } catch (error) {
@@ -66,101 +54,67 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
     }
   };
 
-  // Fetch when nodeId changes
-  useEffect(() => {
-    fetchNodeState();
-  }, [nodeId]);
+  useEffect(() => { fetchNodeState(); }, [nodeId]);
 
-  // Listen for immediate score updates pushed from ValComponent
   useEffect(() => {
     const handleCuriosityUpdate = (e: CustomEvent) => {
-      const { newScore, isCompleted } = e.detail;
+      const { newScore, isCompleted: completed } = e.detail;
       if (newScore !== null && newScore !== undefined) {
         setCuriosityScore(newScore);
-        if (isCompleted) {
+        if (completed) {
           setIsCompleted(true);
           setShowCompletionMessage(true);
-          setTimeout(() => setShowCompletionMessage(false), 5000);
+          setTimeout(() => setShowCompletionMessage(false), 4000);
           window.dispatchEvent(new Event("nodeCompleted"));
         }
         lastManualUpdate.current = Date.now();
       }
     };
-
     window.addEventListener("curiosityUpdate", handleCuriosityUpdate as EventListener);
     return () => window.removeEventListener("curiosityUpdate", handleCuriosityUpdate as EventListener);
   }, []);
 
-  // Poll for updates every second when unlocked and not completed
   useEffect(() => {
     if (!isUnlocked || isCompleted) return;
-
-    const interval = setInterval(() => {
-      fetchNodeState();
-    }, 1000);
-
+    const interval = setInterval(fetchNodeState, 1000);
     return () => clearInterval(interval);
   }, [isUnlocked, isCompleted, nodeId]);
 
   const updateCuriosityScore = async (delta: number) => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) { router.push("/login"); return; }
 
     const newScore = curiosityScore + delta;
     if (newScore < 0 || (newScore > 5 && !isCompleted)) return;
 
-    // Record that we just did a manual update
     lastManualUpdate.current = Date.now();
-
-    // Optimistic update - immediate UI response
     const previousScore = curiosityScore;
     setCuriosityScore(newScore);
-    console.log("frontend updated");
+    setAdminOpen(false);
 
     const willComplete = newScore > 4 && !isCompleted;
     if (willComplete) {
       setIsCompleted(true);
       setShowCompletionMessage(true);
-      setTimeout(() => setShowCompletionMessage(false), 5000);
+      setTimeout(() => setShowCompletionMessage(false), 4000);
       window.dispatchEvent(new Event("nodeCompleted"));
     }
 
-    // Fire and forget - don't wait for response
-    fetch(
-      `${API_URL}/api/user-nodes/${nodeId}/curiosity?score_delta=${delta}`,
-      {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    )
-      .then((response) => {
-        if (!response.ok) {
-          // ONLY revert on error
-          console.error("Backend update failed, reverting");
+    fetch(`${API_URL}/api/user-nodes/${nodeId}/curiosity?score_delta=${delta}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) {
           setCuriosityScore(previousScore);
-          if (willComplete) {
-            setIsCompleted(false);
-            setShowCompletionMessage(false);
-          }
-        } else {
-          // Success! Trust our optimistic update, no need to fetch
-          console.log("Backend update successful");
+          if (willComplete) { setIsCompleted(false); setShowCompletionMessage(false); }
         }
       })
-      .catch((error) => {
-        // ONLY revert on error
-        console.error("Error updating curiosity score:", error);
+      .catch(() => {
         setCuriosityScore(previousScore);
-        if (willComplete) {
-          setIsCompleted(false);
-          setShowCompletionMessage(false);
-        }
+        if (willComplete) { setIsCompleted(false); setShowCompletionMessage(false); }
       });
 
-    // If completing, call complete endpoint (fire and forget)
     if (willComplete) {
       fetch(`${API_URL}/api/user-nodes/${nodeId}/complete`, {
         method: "PATCH",
@@ -169,91 +123,79 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
     }
   };
 
-  if (loading) {
-    return <div className="text-gray-500">Loading progress...</div>;
-  }
+  if (loading) return null;
 
   if (!isUnlocked) {
     return (
-      <div className="bg-gray-100 border border-gray-300 rounded-lg p-4">
-        <p className="text-gray-600">
-          🔒 This node is locked. Complete neighboring nodes to unlock it.
-        </p>
+      <div className="flex items-center gap-2 px-3 py-2 bg-[#edf9fe] rounded-lg">
+        <span className="text-xs text-[#93a0ba]">🔒 Locked</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-      {/* Completion message */}
-      {showCompletionMessage && (
-        <div className="mb-4 bg-green-100 border border-green-300 rounded-lg p-4 animate-fade-in">
-          <p className="text-green-800 font-semibold">
-            🎉 Node completed! Neighbors have been unlocked.
-          </p>
-        </div>
-      )}
-
-      {/* Completion status */}
-      <div className="mb-4">
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-            isCompleted
-              ? "bg-green-100 text-green-800"
-              : "bg-yellow-100 text-yellow-800"
-          }`}
-        >
-          {isCompleted ? "✓ Complete" : "○ Incomplete"}
+    <div>
+      <div className="flex items-center gap-2.5 px-1">
+        {/* Status badge */}
+        <span className={`text-xs font-medium flex-shrink-0 ${isCompleted ? "text-[#001554]" : "text-[#93a0ba]"}`}>
+          {isCompleted ? "✓ Done" : `${curiosityScore}/5`}
         </span>
-      </div>
-
-      {/* Curiosity score */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">Curiosity Score</h3>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => updateCuriosityScore(-1)}
-            disabled={curiosityScore <= 0 || isCompleted}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            −
-          </button>
-
-          <div className="flex items-center gap-2">
-            <div className="text-3xl font-bold">{curiosityScore}</div>
-            <div className="text-gray-500">/ 5</div>
-          </div>
-
-          <button
-            onClick={() => updateCuriosityScore(1)}
-            disabled={curiosityScore >= 5 || isCompleted}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            +
-          </button>
-        </div>
 
         {/* Progress bar */}
-        <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+        <div className="flex-1 bg-[#edf9fe] rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            className="bg-[#001554] h-1.5 rounded-full transition-all duration-500"
             style={{ width: `${(curiosityScore / 5) * 100}%` }}
-          ></div>
+          />
         </div>
 
-        {!isCompleted && curiosityScore === 4 && (
-          <p className="mt-2 text-sm text-gray-600">
-            Increase one more time to complete this node!
-          </p>
+        {/* Admin gear */}
+        {!isCompleted && (
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setAdminOpen(!adminOpen)}
+              className="p-1 hover:bg-[#edf9fe] rounded-md transition-colors cursor-pointer"
+              title="Adjust score"
+            >
+              <svg className="w-3.5 h-3.5 text-[#93a0ba]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+            {adminOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setAdminOpen(false)} />
+                <div className="absolute right-0 bottom-7 w-40 bg-white rounded-xl shadow-xl border border-[#93a0ba]/20 z-50 overflow-hidden">
+                  <div className="p-1">
+                    <button
+                      onClick={() => updateCuriosityScore(1)}
+                      disabled={curiosityScore >= 5}
+                      className="w-full text-left px-3 py-2 text-sm text-[#001554] hover:bg-[#edf9fe] rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      + Increase score
+                    </button>
+                    <button
+                      onClick={() => updateCuriosityScore(-1)}
+                      disabled={curiosityScore <= 0}
+                      className="w-full text-left px-3 py-2 text-sm text-[#001554] hover:bg-[#edf9fe] rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      − Decrease score
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Info text */}
-      {!isCompleted && (
-        <p className="text-sm text-gray-600">
-          Ask curious questions in the chat to increase your score
-          automatically!
-        </p>
+      {showCompletionMessage && (
+        <div className="mt-2 bg-[#001554] text-white text-xs rounded-lg px-3 py-2 text-center">
+          🎉 Node completed — neighbors unlocked!
+        </div>
       )}
     </div>
   );

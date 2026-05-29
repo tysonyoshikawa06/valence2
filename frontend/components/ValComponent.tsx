@@ -17,14 +17,11 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [curiosityNotification, setCuriosityNotification] = useState<
-    string | null
-  >(null);
+  const [curiosityNotification, setCuriosityNotification] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // Scroll to new message (only if not on mount)
   const didMountRef = useRef(false);
   useEffect(() => {
     if (!didMountRef.current) {
@@ -36,24 +33,15 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
 
   const loadChatHistory = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      setLoadingHistory(false);
-      return;
-    }
+    if (!token) { setLoadingHistory(false); return; }
 
     try {
       const response = await fetch(`${API_URL}/api/chat-history/${nodeId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.ok) {
         const data = await response.json();
-        if (data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
-          console.log(`Loaded ${data.messages.length} messages from history`);
-        }
+        if (data.messages?.length > 0) setMessages(data.messages);
       }
     } catch (error) {
       console.error("Error loading chat history:", error);
@@ -62,7 +50,6 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
     }
   };
 
-  // Load chat history when nodeId changes
   useEffect(() => {
     loadChatHistory();
   }, [nodeId]);
@@ -70,21 +57,15 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage: Message = {
-      role: "user",
-      content: input,
-    };
-
+    const userMessage: Message = { role: "user", content: input };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const messagesToSend = newMessages.slice(-10);
+      const messagesToSend = newMessages.slice(-15);
       const token = localStorage.getItem("token");
-
-      console.log("Sending chat request with node_id:", nodeId);
 
       const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
@@ -92,38 +73,22 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          messages: messagesToSend,
-          node_id: nodeId,
-        }),
+        body: JSON.stringify({ messages: messagesToSend, node_id: nodeId }),
       });
 
       if (!response.ok) throw new Error("Failed to get response");
 
       const data = await response.json();
-      console.log("Chat response:", data);
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.message,
-      };
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }].slice(-15));
 
-      setMessages((prev) => [...prev, assistantMessage].slice(-10));
-
-      // Show curiosity notification and push new score to NodeProgress
       if (data.curiosity_increased) {
-        setCuriosityNotification(
-          data.curiosity_reason ||
-            "Great question! Your curiosity score increased!"
-        );
-        setTimeout(() => setCuriosityNotification(null), 5000);
+        setCuriosityNotification(data.curiosity_reason || "Curiosity score increased!");
+        setTimeout(() => setCuriosityNotification(null), 4000);
 
         window.dispatchEvent(
           new CustomEvent("curiosityUpdate", {
-            detail: {
-              newScore: data.new_curiosity_score,
-              isCompleted: data.is_completed,
-            },
+            detail: { newScore: data.new_curiosity_score, isCompleted: data.is_completed },
           })
         );
       }
@@ -131,17 +96,14 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
       console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-        },
+        { role: "assistant", content: "Sorry, I encountered an error. Please try again." },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -150,47 +112,36 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
 
   if (loadingHistory) {
     return (
-      <div className="flex flex-col h-96 border rounded-lg items-center justify-center">
-        <div className="text-gray-500">Loading chat history...</div>
+      <div className="flex flex-col h-[28rem] items-center justify-center">
+        <div className="w-5 h-5 border-2 border-[#93a0ba] border-t-[#001554] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-96 border rounded-lg relative">
-      {/* Curiosity Notification */}
+    <div className="flex flex-col h-[28rem] relative">
+      {/* Curiosity notification */}
       {curiosityNotification && (
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 bg-green-100 border border-green-300 rounded-lg px-4 py-2 shadow-lg animate-fade-in">
-          <p className="text-green-800 font-semibold flex items-center gap-2">
-            <span className="text-xl">🌟</span>
-            {curiosityNotification}
-          </p>
+        <div className="absolute top-2 left-2 right-2 z-10 bg-[#001554] text-white text-xs rounded-lg px-3 py-2 shadow-lg">
+          ✦ {curiosityNotification}
         </div>
       )}
 
-      {/* Chat messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-gray-400 text-center mt-8">
-            Ask me anything about {nodeLabel}...
-            <p className="text-sm mt-2">
-              💡 Tip: Ask questions that connect concepts to increase your
-              curiosity score!
-            </p>
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <p className="text-[#93a0ba] text-sm">Ask me anything about {nodeLabel}</p>
+            <p className="text-[#93a0ba]/60 text-xs mt-1">Curious questions unlock new topics</p>
           </div>
         ) : (
           messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
+            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   msg.role === "user"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200 text-gray-800"
+                    ? "bg-[#001554] text-white rounded-br-sm"
+                    : "bg-[#edf9fe] text-[#001554] rounded-bl-sm"
                 }`}
               >
                 {msg.content}
@@ -198,33 +149,40 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
             </div>
           ))
         )}
+
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2">
-              <span className="animate-pulse">Thinking...</span>
+            <div className="bg-[#edf9fe] rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-[#93a0ba] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 bg-[#93a0ba] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 bg-[#93a0ba] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t p-4 flex gap-2">
+      {/* Input */}
+      <div className="border-t border-[#93a0ba]/15 p-3 flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type a message..."
+          onKeyDown={handleKeyDown}
+          placeholder="Ask a question..."
           disabled={loading}
-          className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-[#edf9fe] border border-[#93a0ba]/30 rounded-xl px-3.5 py-2 text-sm text-[#001554] placeholder-[#93a0ba] focus:outline-none focus:ring-2 focus:ring-[#001554]/20 focus:border-[#001554]/40 transition-all"
         />
         <button
           onClick={sendMessage}
           disabled={loading || !input.trim()}
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="bg-[#001554] text-white w-9 h-9 flex items-center justify-center rounded-xl hover:bg-[#001554]/80 disabled:bg-[#93a0ba]/30 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
         >
-          {loading ? "..." : "→"}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
         </button>
       </div>
     </div>

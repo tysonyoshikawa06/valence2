@@ -8,183 +8,127 @@ import { useAuth } from "./context/AuthContext";
 
 export default function Home() {
   const { user, logout, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [filter, setFilter] = useState({
-    unit1: true,
-    unit2: true,
-  });
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [filter, setFilter] = useState({ unit1: true, unit2: true });
 
   const { resetGraph, completeAllNodes } = useGraphActions();
 
-  // Trigger graph refresh when component mounts
   useEffect(() => {
-    // Dispatch custom event to refresh graph
     window.dispatchEvent(new Event("refreshGraph"));
   }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center min-h-screen bg-[#edf9fe]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#001554]" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <h1 className="text-4xl font-bold mb-8">Welcome to Valence v2</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#edf9fe]">
+        <h1 className="text-4xl font-bold mb-8 text-[#001554]">Welcome to Valence</h1>
         <GoogleSignInButton />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#edf9fe]">
       {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
-        <div className="px-4 py-3 flex items-center justify-between">
-          {/* Left: Hamburger + Title + Action Buttons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            <h1 className="text-xl font-bold">AP Chemistry Graph</h1>
+      <nav className="bg-[#001554] fixed top-0 left-0 right-0 z-40 h-16">
+        <div className="px-4 h-full flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white tracking-tight">AP Chemistry Graph</h1>
 
-            {/* Action Buttons - Desktop */}
-            <div className="hidden sm:flex items-center gap-2 ml-4">
+          {/* Right: Admin + Profile */}
+          <div className="flex items-center gap-1">
+            {/* Admin Icon */}
+            <div className="relative">
               <button
-                onClick={completeAllNodes}
-                className="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
+                onClick={() => { setAdminOpen(!adminOpen); setProfileOpen(false); }}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                title="Admin"
               >
-                Complete All
+                <svg className="w-5 h-5 text-[#93a0ba]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
               </button>
-              <button
-                onClick={resetGraph}
-                className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
 
-          {/* Right: Profile */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2 hover:bg-gray-100 rounded-lg p-2 transition-colors"
-            >
-              <img
-                src={user.picture}
-                alt={user.name}
-                className="w-8 h-8 rounded-full"
-              />
-            </button>
-
-            {/* Profile Dropdown */}
-            {profileOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setProfileOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                  {/* User Info */}
-                  <div className="p-4 border-b border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={user.picture}
-                        alt={user.name}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{user.name}</p>
-                        <p className="text-sm text-gray-600 truncate">
-                          {user.email}
-                        </p>
-                      </div>
+              {adminOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAdminOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-[#93a0ba]/20 z-50 overflow-hidden">
+                    <div className="p-1">
+                      <button
+                        onClick={() => { completeAllNodes(); setAdminOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-[#001554] hover:bg-[#edf9fe] rounded-lg transition-colors cursor-pointer"
+                      >
+                        Complete All Nodes
+                      </button>
+                      <button
+                        onClick={() => { resetGraph(); setAdminOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Reset Graph
+                      </button>
                     </div>
                   </div>
+                </>
+              )}
+            </div>
 
-                  {/* Action Buttons - Mobile Only */}
-                  <div className="p-2 border-b border-gray-200 sm:hidden">
-                    <button
-                      onClick={() => {
-                        completeAllNodes();
-                        setProfileOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors mb-1"
-                    >
-                      Complete All Nodes
-                    </button>
-                    <button
-                      onClick={() => {
-                        resetGraph();
-                        setProfileOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Reset Graph
-                    </button>
-                  </div>
+            {/* Profile */}
+            <div className="relative">
+              <button
+                onClick={() => { setProfileOpen(!profileOpen); setAdminOpen(false); }}
+                className="flex items-center gap-2 hover:bg-white/10 rounded-lg p-2 transition-colors cursor-pointer"
+              >
+                <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full ring-2 ring-white/20" />
+              </button>
 
-                  {/* Sign Out */}
-                  <div className="p-2">
-                    <button
-                      onClick={() => {
-                        logout();
-                        setProfileOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Sign Out
-                    </button>
+              {profileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-[#93a0ba]/20 z-50 overflow-hidden">
+                    <div className="p-4 border-b border-[#93a0ba]/10">
+                      <div className="flex items-center gap-3">
+                        <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[#001554] truncate text-sm">{user.name}</p>
+                          <p className="text-xs text-[#93a0ba] truncate">{user.email}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-1">
+                      <button
+                        onClick={() => { logout(); setProfileOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        filter={filter}
-        setFilter={setFilter}
-      />
+      {/* Sidebar — always visible */}
+      <Sidebar filter={filter} setFilter={setFilter} />
 
-      {/* Main Content - Graph is always rendered and visible on home page */}
-      <main className="pt-16 pl-0 transition-all duration-300">
+      {/* Main content offset for fixed sidebar */}
+      <main className="pt-16 pl-64">
         <div className="p-8">
           <Graph filter={filter} />
         </div>
       </main>
-
-      {/* Overlay when sidebar is open on mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }
