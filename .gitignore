@@ -1,10 +1,11 @@
-# ── Next.js ──────────────────────────────────────────────────────────────────
+# ── Next.js ───────────────────────────────────────────────────────────────────
 .next/
 out/
 next-env.d.ts
 *.tsbuildinfo
+frontend/build/
 
-# ── Node ─────────────────────────────────────────────────────────────────────
+# ── Node ──────────────────────────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -13,8 +14,15 @@ yarn-error.log*
 .npm
 .eslintcache
 coverage/
+frontend/.pnp
+frontend/.pnp.*
+frontend/.yarn/*
+!frontend/.yarn/patches
+!frontend/.yarn/plugins
+!frontend/.yarn/releases
+!frontend/.yarn/versions
 
-# ── Python ───────────────────────────────────────────────────────────────────
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
@@ -24,20 +32,24 @@ venv/
 
 # ── Environment & secrets ─────────────────────────────────────────────────────
 .env
-.env.local
+.env.locals
 .env*.local
 env.txt
 frontend/env.local.txt
 
-# ── AWS / deployment ─────────────────────────────────────────────────────────
+# ── AWS / deployment ──────────────────────────────────────────────────────────
 backend-task-def.json
 frontend-task-def.json
 trust-policy.json
+.vercel
 
 # ── Graphify ──────────────────────────────────────────────────────────────────
 graphify-out/
 
-# ── OS ───────────────────────────────────────────────────────────────────────
+# ── Claude ────────────────────────────────────────────────────────────────────
+.claude/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 *.pem
 Thumbs.db

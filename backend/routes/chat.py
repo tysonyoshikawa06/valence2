@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import List
 import os
+import time
 import anthropic
 from database import execute_query, complete_and_unlock_node
 import jwt
@@ -16,6 +17,10 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 
 MAX_CHAT_HISTORY = 15
+CHAT_COOLDOWN_SECONDS = 5
+
+# Per-user cooldown tracking: user_id -> last message timestamp
+_last_message_time: dict[str, float] = {}
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=4)
@@ -30,7 +35,9 @@ def get_current_user_id(authorization: str = Header(None)):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload.get("sub")
-    except:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 class Message(BaseModel):
@@ -183,8 +190,13 @@ async def chat(
     user_id: str = Depends(get_current_user_id)
 ):
     try:
+        now = time.time()
+        if now - _last_message_time.get(user_id, 0) < CHAT_COOLDOWN_SECONDS:
+            raise HTTPException(status_code=429, detail="Please wait a moment before sending another message.")
+        _last_message_time[user_id] = now
+
         print(f"Chat request - User ID: {user_id}, Node ID: {request.node_id}")
-        
+
         # Get the user's latest question
         user_messages = [msg for msg in request.messages if msg.role == "user"]
         if not user_messages:
