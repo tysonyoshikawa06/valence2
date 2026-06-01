@@ -34,8 +34,6 @@ venv/
 .env
 .env.locals
 .env*.local
-env.txt
-frontend/env.local.txt
 
 # ── AWS / deployment ──────────────────────────────────────────────────────────
 backend-task-def.json
