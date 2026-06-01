@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Header, Depends, BackgroundTasks
 from pydantic import BaseModel
-from typing import List
+from typing import List, Literal
 import os
+import re
 import time
 import anthropic
 from database import execute_query, complete_and_unlock_node
@@ -9,6 +10,8 @@ import jwt
 import json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+
+_NODE_ID_RE = re.compile(r'^[a-z0-9_]{1,64}$')
 
 router = APIRouter()
 
@@ -41,7 +44,7 @@ def get_current_user_id(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 class Message(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
 class ChatRequest(BaseModel):
@@ -190,10 +193,20 @@ async def chat(
     user_id: str = Depends(get_current_user_id)
 ):
     try:
+        if not _NODE_ID_RE.match(request.node_id):
+            raise HTTPException(status_code=400, detail="Invalid node ID")
+
         now = time.time()
         if now - _last_message_time.get(user_id, 0) < CHAT_COOLDOWN_SECONDS:
             raise HTTPException(status_code=429, detail="Please wait a moment before sending another message.")
         _last_message_time[user_id] = now
+
+        # Prune stale cooldown entries to prevent unbounded memory growth
+        if len(_last_message_time) > 10000:
+            cutoff = now - CHAT_COOLDOWN_SECONDS * 2
+            stale = [uid for uid, t in _last_message_time.items() if t < cutoff]
+            for uid in stale:
+                del _last_message_time[uid]
 
         print(f"Chat request - User ID: {user_id}, Node ID: {request.node_id}")
 
@@ -226,7 +239,7 @@ async def chat(
         )
 
         # OPTIMIZATION: Run both API calls in parallel
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         chat_task = loop.run_in_executor(
             executor,
@@ -283,8 +296,10 @@ async def chat(
         print(f"Response sent to user (background tasks queued)")
         return response_data
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Anthropic API error: {e}")
+        print(f"Chat error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

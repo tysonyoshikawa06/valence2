@@ -104,12 +104,6 @@ export default function Home() {
               className="h-16 w-16 mb-6 drop-shadow-sm"
             />
 
-            {/* Badge */}
-            <div className="flex items-center gap-2 bg-[#001554]/5 text-[#001554]/60 text-xs font-medium px-3 py-1.5 rounded-full mb-6 border border-[#001554]/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb] inline-block" />
-              AP Chemistry · Unit 1 &amp; Unit 2
-            </div>
-
             <h1 className="text-5xl font-bold text-[#001554] mb-5 tracking-tight leading-tight">
               Learn chemistry
               <br />
@@ -255,20 +249,40 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
             <div className="flex flex-col gap-3">
               <div className="shadow-md border border-[#93a0ba]/15 aspect-video">
-                <img src="/graph_page.png" alt="Knowledge graph view" className="w-full h-full object-cover" />
+                <img
+                  src="/graph_page.png"
+                  alt="Knowledge graph view"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="px-1">
-                <p className="text-sm font-medium text-[#001554]">The knowledge graph</p>
-                <p className="text-xs text-[#93a0ba] mt-0.5">Browse all AP Chemistry topics as an interactive graph. Completed nodes unlock their neighbors.</p>
+                <p className="text-sm font-medium text-[#001554]">
+                  The Knowledge Graph
+                </p>
+                <p className="text-xs text-[#93a0ba] mt-0.5">
+                  Browse all AP Chemistry topics as an interactive graph. Click
+                  the connection between two nodes to see how topics are
+                  related!
+                </p>
               </div>
             </div>
             <div className="flex flex-col gap-3">
               <div className="shadow-md border border-[#93a0ba]/15 aspect-video">
-                <img src="/node_page.png" alt="Node study page" className="w-full h-full object-cover" />
+                <img
+                  src="/node_page.png"
+                  alt="Node study page"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="px-1">
-                <p className="text-sm font-medium text-[#001554]">Deep-dive into any topic</p>
-                <p className="text-xs text-[#93a0ba] mt-0.5">Each node has rich content and a live chat with Val. Ask curious questions to earn progress.</p>
+                <p className="text-sm font-medium text-[#001554]">
+                  Deep-dive into any topic
+                </p>
+                <p className="text-xs text-[#93a0ba] mt-0.5">
+                  Each node has rich content and a live chat with Val. Ask
+                  curious questions to earn progress and unlock neighboring
+                  nodes.
+                </p>
               </div>
             </div>
           </div>

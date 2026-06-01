@@ -98,8 +98,8 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
 
   const getNodeDot = (unit?: string, isCompleted?: boolean): string => {
     if (!unit) return "bg-[#93a0ba]";
-    if (unit.includes("Unit 1")) return isCompleted ? "bg-[#001554]/80" : "bg-[#001554]/80";
-    if (unit.includes("Unit 2")) return isCompleted ? "bg-[#b91c1c]/80" : "bg-[#b91c1c]/80";
+    if (unit.includes("Unit 1")) return isCompleted ? "bg-[#001554]/80" : "bg-[#2563eb]";
+    if (unit.includes("Unit 2")) return isCompleted ? "bg-[#b91c1c]/80" : "bg-[#ef4444]";
     return "bg-[#93a0ba]";
   };
 
@@ -157,7 +157,7 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
                 onChange={(e) => handleFilterChange("unit1", e.target.checked)}
                 className="rounded accent-[#001554] cursor-pointer"
               />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#001554]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
               <span className="text-sm text-[#001554]">Unit 1: Atomic Structures</span>
             </label>
 
@@ -168,7 +168,7 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
                 onChange={(e) => handleFilterChange("unit2", e.target.checked)}
                 className="rounded accent-[#001554] cursor-pointer"
               />
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" />
               <span className="text-sm text-[#001554]">Unit 2: Compound Structure</span>
             </label>
           </div>

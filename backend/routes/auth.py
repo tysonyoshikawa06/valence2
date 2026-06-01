@@ -93,15 +93,13 @@ async def google_login(request: GoogleLoginRequest):
         }
         
     except ValueError as e:
-        # Google token verification failed
-        print(f"ValueError: {e}")
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+        print(f"Google token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google credential")
     except Exception as e:
-        # General error
-        print(f"Error: {e}")
+        print(f"Login error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/me")
 async def get_current_user(authorization: str = Header(None)):

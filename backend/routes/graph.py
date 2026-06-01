@@ -3,6 +3,9 @@ from database import execute_query, complete_and_unlock_node
 import jwt
 import os
 import json
+import re
+
+_NODE_ID_RE = re.compile(r'^[a-z0-9_]{1,64}$')
 
 router = APIRouter()
 
@@ -84,7 +87,7 @@ async def initialize_graph(user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail="Graph data file not found")
     except Exception as e:
         print(f"Error initializing graph: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/user-nodes")
 async def get_user_nodes(user_id: str = Depends(get_current_user_id)):
@@ -100,21 +103,26 @@ async def get_user_nodes(user_id: str = Depends(get_current_user_id)):
 @router.get("/user-nodes/{node_id}")
 async def get_single_node(node_id: str, user_id: str = Depends(get_current_user_id)):
     """Get a single node for the current user"""
+    if not _NODE_ID_RE.match(node_id):
+        raise HTTPException(status_code=400, detail="Invalid node ID")
+
     query = """
         SELECT node_id, neighbors, is_completed, curiosity_score, is_unlocked
         FROM user_nodes
         WHERE user_id = %s AND node_id = %s
     """
     result = execute_query(query, (user_id, node_id))
-    
+
     if not result:
         raise HTTPException(status_code=404, detail="Node not found")
-    
+
     return result[0]
 
 @router.patch("/user-nodes/{node_id}/complete")
 async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id)):
     """Mark a node as completed and unlock all its neighbors"""
+    if not _NODE_ID_RE.match(node_id):
+        raise HTTPException(status_code=400, detail="Invalid node ID")
     try:
         neighbors = complete_and_unlock_node(user_id, node_id)
 
@@ -130,7 +138,7 @@ async def complete_node(node_id: str, user_id: str = Depends(get_current_user_id
         raise
     except Exception as e:
         print(f"Error completing node: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.patch("/user-nodes/{node_id}/curiosity")
 async def update_curiosity_score(
@@ -139,17 +147,23 @@ async def update_curiosity_score(
     user_id: str = Depends(get_current_user_id)
 ):
     """Update curiosity score for a node"""
+    if not _NODE_ID_RE.match(node_id):
+        raise HTTPException(status_code=400, detail="Invalid node ID")
+    if score_delta not in (-1, 1):
+        raise HTTPException(status_code=400, detail="score_delta must be -1 or 1")
+
     update_query = """
         UPDATE user_nodes
-        SET curiosity_score = curiosity_score + %s, updated_at = CURRENT_TIMESTAMP
+        SET curiosity_score = GREATEST(0, LEAST(5, curiosity_score + %s)),
+            updated_at = CURRENT_TIMESTAMP
         WHERE user_id = %s AND node_id = %s
         RETURNING curiosity_score
     """
     result = execute_query(update_query, (score_delta, user_id, node_id))
-    
+
     if not result:
         raise HTTPException(status_code=404, detail="Node not found")
-    
+
     return {"curiosity_score": result[0]['curiosity_score']}
 
 @router.delete("/reset-graph")
@@ -176,7 +190,7 @@ async def reset_graph(user_id: str = Depends(get_current_user_id)):
         
     except Exception as e:
         print(f"Error resetting graph: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/complete-all-nodes")
 async def complete_all_nodes(user_id: str = Depends(get_current_user_id)):
@@ -197,4 +211,4 @@ async def complete_all_nodes(user_id: str = Depends(get_current_user_id)):
         
     except Exception as e:
         print(f"Error completing all nodes: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
