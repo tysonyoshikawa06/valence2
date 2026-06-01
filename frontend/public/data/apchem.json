@@ -22,7 +22,7 @@
       "group": "nodes",
       "data": {
         "id": "defining_matter",
-        "label": "Defining matter",
+        "label": "Defining Matter",
         "unit": "Unit 1: Atomic Structures and Properties",
         "description": "lorem ipsum dolor sit amet"
       }
@@ -31,7 +31,7 @@
       "group": "nodes",
       "data": {
         "id": "atomic_structure_and_electron_configuration",
-        "label": "Atomic structure and electron configuration",
+        "label": "Atomic Structure and Electron Configuration",
         "unit": "Unit 1: Atomic Structures and Properties",
         "description": "lorem ipsum dolor sit amet"
       }
@@ -40,7 +40,7 @@
       "group": "nodes",
       "data": {
         "id": "photoelectron_spectroscopy",
-        "label": "Photoelectron spectroscopy",
+        "label": "Photoelectron Spectroscopy",
         "unit": "Unit 1: Atomic Structures and Properties",
         "description": "lorem ipsum dolor sit amet"
       }
@@ -152,7 +152,7 @@
         "id": "isotopes_and_coulombs_law_TO_valence_electrons_and_ionic_compounds",
         "source": "isotopes_and_coulombs_law",
         "target": "valence_electrons_and_ionic_compounds",
-        "description": "Inverse square law in Coulomb's law makes it so distance is a larger determining factor than charge, thus why valence electrons have such a low ionization energy"
+        "description": "Inverse square law in Coulomb's law says that distance is a larger determining factor than charge, thus why valence electrons have such a low ionization energy"
       }
     },
     {
@@ -179,7 +179,7 @@
         "id": "isotopes_and_coulombs_law_TO_periodic_trends",
         "source": "isotopes_and_coulombs_law",
         "target": "periodic_trends",
-        "description": "coulomb's law can be used to describe why ionization energy and atomic radius are inversly related in periodic trends"
+        "description": "Coulomb's law can be used to describe why ionization energy and atomic radius are inversly related in periodic trends"
       }
     },
     {

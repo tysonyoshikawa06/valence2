@@ -6,6 +6,9 @@ import { AuthProvider } from "./context/AuthContext";
 export const metadata: Metadata = {
   title: "Valence v2",
   description: "Valence v2",
+  icons: {
+    icon: "/valence_circle.png",
+  },
 };
 
 export default function RootLayout({
