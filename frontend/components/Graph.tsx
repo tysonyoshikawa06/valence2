@@ -106,6 +106,16 @@ export const refreshGraphFromExternal = () => {
   lastFetchTime = 0;
 };
 
+export const clearGraphCache = () => {
+  cachedUserNodes = null;
+  lastFetchTime = 0;
+  if (persistentCyInstance) {
+    persistentCyInstance.destroy();
+    persistentCyInstance = null;
+  }
+  instanceContainer = null;
+};
+
 // ============================================================================
 // MAIN GRAPH COMPONENT
 // ============================================================================
@@ -370,8 +380,8 @@ export default function Graph({ filter }: GraphProps) {
             selector:
               'node[unit = "Unit 1: Atomic Structures and Properties"].unlocked.incomplete',
             style: {
-              "background-color": "#001554",
-              "background-opacity": 0.8,
+              "background-color": "#2563eb",
+              "background-opacity": 1,
               cursor: "pointer",
             } as any,
           },
@@ -395,8 +405,8 @@ export default function Graph({ filter }: GraphProps) {
             selector:
               'node[unit = "Unit 2: Compound Structure and Properties"].unlocked.incomplete',
             style: {
-              "background-color": "#b91c1c",
-              "background-opacity": 0.8,
+              "background-color": "#ef4444",
+              "background-opacity": 1,
               cursor: "pointer",
             } as any,
           },

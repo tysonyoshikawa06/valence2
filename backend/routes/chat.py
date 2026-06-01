@@ -41,17 +41,22 @@ class ChatRequest(BaseModel):
     messages: List[Message]
     node_id: str
 
-def evaluate_curiosity(question: str, topic: str) -> dict:
+def evaluate_curiosity(question: str, topic: str, previous_questions: list = None) -> dict:
     """
     Evaluate if a question demonstrates curiosity and connected thinking.
     Returns: {"is_curious": bool, "reason": str}
     """
     try:
+        prev_block = ""
+        if previous_questions:
+            formatted = "\n".join(f"- {q}" for q in previous_questions[-10:])
+            prev_block = f"\nQuestions this student has already asked:\n{formatted}\n\nOnly return is_curious: false for a repeat if the current question is nearly identical in wording and intent to a previous one — not just on a similar topic.\n"
+
         evaluation_prompt = f"""You are evaluating student questions about chemistry to determine if they demonstrate curiosity and connected thinking.
 
 Topic: {topic}
 Student Question: {question}
-
+{prev_block}
 A question is "curious" if it:
 1. Shows interdisciplinary thinking (biology, physics, everyday life)
 2. Asks "why" questions
@@ -184,17 +189,29 @@ async def chat(
         user_messages = [msg for msg in request.messages if msg.role == "user"]
         if not user_messages:
             raise HTTPException(status_code=400, detail="No user message found")
-        
+
         latest_question = user_messages[-1].content
+        previous_questions = [msg.content for msg in user_messages[:-1]]
         print(f"Latest question: {latest_question}")
-        
+
         # Convert messages to Anthropic format, capped to last MAX_CHAT_HISTORY
         anthropic_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in request.messages[-MAX_CHAT_HISTORY:]
         ]
 
-        system_content = f"You are a helpful chemistry tutor discussing the topic: {request.node_id}. Keep responses concise and relevant (2-3 sentences)."
+        prev_questions_block = ""
+        if previous_questions:
+            formatted = "\n".join(f"- {q}" for q in previous_questions[-10:])
+            prev_questions_block = f"\n\nQuestions this student has already asked:\n{formatted}\n\nOnly if their current question is nearly identical (not just on a similar topic) to one they already asked, briefly note it and nudge them toward a different angle."
+
+        system_content = (
+            f"You are Val, a chemistry tutor discussing the topic: {request.node_id}. "
+            "Write in plain conversational language only — no markdown formatting, no bullet points, no bold text, no headers, no backticks. "
+            "Basic math notation is fine (e.g. H2O, x^2). "
+            "Keep responses concise and direct (2-3 sentences)."
+            f"{prev_questions_block}"
+        )
 
         # OPTIMIZATION: Run both API calls in parallel
         loop = asyncio.get_event_loop()
@@ -205,12 +222,13 @@ async def chat(
             system_content,
             anthropic_messages
         )
-        
+
         curiosity_task = loop.run_in_executor(
             executor,
             evaluate_curiosity,
             latest_question,
-            request.node_id
+            request.node_id,
+            previous_questions
         )
         
         # Wait for both to complete

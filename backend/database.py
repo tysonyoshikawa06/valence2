@@ -8,11 +8,19 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+def _configure_conn(conn):
+    conn.prepare_threshold = None
+
 pool = ConnectionPool(
     DATABASE_URL,
     min_size=2,
     max_size=10,
     open=False,
+    max_lifetime=300,
+    max_idle=60,
+    reconnect_timeout=5,
+    check=ConnectionPool.check_connection,
+    configure=_configure_conn,
     kwargs={"row_factory": dict_row},
 )
 

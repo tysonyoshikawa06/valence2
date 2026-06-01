@@ -123,7 +123,7 @@ export default function NodeProgress({ nodeId }: NodeProgressProps) {
     }
   };
 
-  if (loading) return null;
+  if (loading) return <div className="h-5" />;
 
   if (!isUnlocked) {
     return (

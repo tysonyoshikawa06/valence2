@@ -18,9 +18,15 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [curiosityNotification, setCuriosityNotification] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
 
   const didMountRef = useRef(false);
   useEffect(() => {
@@ -28,8 +34,12 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
       didMountRef.current = true;
       return;
     }
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!loadingHistory) scrollToBottom();
+  }, [loadingHistory]);
 
   const loadChatHistory = async () => {
     const token = localStorage.getItem("token");
@@ -83,7 +93,7 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
       setMessages((prev) => [...prev, { role: "assistant", content: data.message }].slice(-15));
 
       if (data.curiosity_increased) {
-        setCuriosityNotification(data.curiosity_reason || "Curiosity score increased!");
+        setCuriosityNotification("Good question!");
         setTimeout(() => setCuriosityNotification(null), 4000);
 
         window.dispatchEvent(
@@ -128,7 +138,7 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <p className="text-[#93a0ba] text-sm">Ask me anything about {nodeLabel}</p>
@@ -161,7 +171,6 @@ export default function ValComponent({ nodeLabel, nodeId }: ValComponentProps) {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}

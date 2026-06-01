@@ -7,6 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { clearGraphCache } from "@/components/Graph";
+import { clearNeighborsCache } from "@/components/NeighborsList";
 
 interface User {
   id: string;
@@ -90,6 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Passed through AuthContext
   const logout = () => {
     localStorage.removeItem("token");
+    clearGraphCache();
+    clearNeighborsCache();
     setUser(null);
   };
 

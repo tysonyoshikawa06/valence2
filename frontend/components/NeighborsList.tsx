@@ -31,6 +31,11 @@ let cachedStates: Record<string, NodeState> = {};
 let lastFetchTime = 0;
 const CACHE_TTL = 60000; // 60 seconds — states only change on nodeCompleted events
 
+export const clearNeighborsCache = () => {
+  cachedStates = {};
+  lastFetchTime = 0;
+};
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
