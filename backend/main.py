@@ -8,8 +8,11 @@ import os
 
 load_dotenv()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 PORT = int(os.getenv("PORT", 8000))
+
+# Support comma-separated list of allowed origins for multi-env setups
+allowed_origins = [url.strip() for url in FRONTEND_URL.split(",") if url.strip()]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +26,7 @@ app = FastAPI(title="Knowledge Graph API", lifespan=lifespan)
 # CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL], # Next.js frontend
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

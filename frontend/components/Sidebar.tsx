@@ -174,7 +174,7 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
 
         {/* ====== FILTER ====== */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 pr-7 lg:pr-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#93a0ba]">Filter</span>
             <span className="text-xs text-[#93a0ba]">
               {upNextNodes.length + completedNodes.length} nodes
