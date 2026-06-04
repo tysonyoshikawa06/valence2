@@ -16,5 +16,3 @@ services:
     restart: always
     ports:
       - "127.0.0.1:3000:3000"
-    env_file:
-      - ./frontend/.env.production
