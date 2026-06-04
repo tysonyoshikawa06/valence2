@@ -441,7 +441,7 @@ export default function Home() {
       <Sidebar filter={filter} setFilter={setFilter} />
 
       {/* Main content offset for fixed sidebar */}
-      <main className="pt-16 pl-64">
+      <main className="pt-16 lg:pl-64">
         <div className="p-8">
           <Graph filter={filter} />
         </div>

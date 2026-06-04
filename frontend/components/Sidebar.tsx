@@ -41,6 +41,7 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[] } | null>(null);
   const [showAllUpNext, setShowAllUpNext] = useState(false);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -138,8 +139,39 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
   // ==========================================================================
 
   return (
-    <aside className="fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-[#93a0ba]/20 z-40 overflow-y-auto">
+    <>
+      {/* Mobile toggle button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-[4.5rem] left-3 z-50 bg-white border border-[#93a0ba]/20 rounded-lg p-2 shadow-sm"
+        aria-label="Open sidebar"
+      >
+        <svg className="w-5 h-5 text-[#001554]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/20 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+    <aside className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-[#93a0ba]/20 z-50 overflow-y-auto transition-transform duration-300 lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="p-4">
+        {/* Mobile close button */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden absolute top-3 right-3 p-1.5 rounded-lg hover:bg-[#edf9fe] transition-colors"
+          aria-label="Close sidebar"
+        >
+          <svg className="w-4 h-4 text-[#93a0ba]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         {/* ====== FILTER ====== */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
@@ -257,5 +289,6 @@ export default function Sidebar({ filter, setFilter }: SidebarProps) {
         </div>
       </div>
     </aside>
+    </>
   );
 }
