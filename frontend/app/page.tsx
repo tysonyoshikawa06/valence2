@@ -111,8 +111,10 @@ export default function Home() {
             </h1>
             <p className="text-[#93a0ba] text-base leading-relaxed mb-8">
               Valence is a knowledge graph for AP Chemistry. Unlock topics by
-              asking thoughtful questions to Val, your AI tutor — the more you
-              wonder, the further you go.
+              asking thoughtful questions to Val, your AI tutor.
+              <br />
+              <br />
+              The more you ask, the further you go!
             </p>
 
             {/* Feature pills */}
@@ -260,9 +262,8 @@ export default function Home() {
                   The Knowledge Graph
                 </p>
                 <p className="text-xs text-[#93a0ba] mt-0.5">
-                  Browse all AP Chemistry topics as an interactive graph. Click
-                  the connection between two nodes to see how topics are
-                  related!
+                  Browse AP Chemistry topics as an interactive graph. Click the
+                  connection between two nodes to see how topics are related!
                 </p>
               </div>
             </div>

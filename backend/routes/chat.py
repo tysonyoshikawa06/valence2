@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Header, Depends, BackgroundTasks, Request
 from pydantic import BaseModel
 from typing import List, Literal
 import os
@@ -6,6 +6,7 @@ import re
 import time
 import anthropic
 from database import execute_query, complete_and_unlock_node
+from limiter import limiter
 import jwt
 import json
 import asyncio
@@ -187,13 +188,15 @@ async def get_chat_history(node_id: str, user_id: str = Depends(get_current_user
         return {"messages": []}
 
 @router.post("/chat")
+@limiter.limit("20/minute")
 async def chat(
-    request: ChatRequest, 
+    request: Request,
+    body: ChatRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id)
 ):
     try:
-        if not _NODE_ID_RE.match(request.node_id):
+        if not _NODE_ID_RE.match(body.node_id):
             raise HTTPException(status_code=400, detail="Invalid node ID")
 
         now = time.time()
@@ -208,10 +211,10 @@ async def chat(
             for uid in stale:
                 del _last_message_time[uid]
 
-        print(f"Chat request - User ID: {user_id}, Node ID: {request.node_id}")
+        print(f"Chat request - User ID: {user_id}, Node ID: {body.node_id}")
 
         # Get the user's latest question
-        user_messages = [msg for msg in request.messages if msg.role == "user"]
+        user_messages = [msg for msg in body.messages if msg.role == "user"]
         if not user_messages:
             raise HTTPException(status_code=400, detail="No user message found")
 
@@ -222,7 +225,7 @@ async def chat(
         # Convert messages to Anthropic format, capped to last MAX_CHAT_HISTORY
         anthropic_messages = [
             {"role": msg.role, "content": msg.content}
-            for msg in request.messages[-MAX_CHAT_HISTORY:]
+            for msg in body.messages[-MAX_CHAT_HISTORY:]
         ]
 
         prev_questions_block = ""
@@ -231,7 +234,7 @@ async def chat(
             prev_questions_block = f"\n\nQuestions this student has already asked:\n{formatted}\n\nOnly if their current question is nearly identical (not just on a similar topic) to one they already asked, briefly note it and nudge them toward a different angle."
 
         system_content = (
-            f"You are Val, a chemistry tutor discussing the topic: {request.node_id}. "
+            f"You are Val, a chemistry tutor discussing the topic: {body.node_id}. "
             "Write in plain conversational language only — no markdown formatting, no bullet points, no bold text, no headers, no backticks. "
             "Basic math notation is fine (e.g. H2O, x^2). "
             "Keep responses concise and direct (2-3 sentences)."
@@ -252,7 +255,7 @@ async def chat(
             executor,
             evaluate_curiosity,
             latest_question,
-            request.node_id,
+            body.node_id,
             previous_questions
         )
         
@@ -262,7 +265,7 @@ async def chat(
         print(f"Curiosity evaluation: {curiosity_eval}")
 
         # Build updated chat history
-        updated_messages = request.messages + [Message(role="assistant", content=assistant_message)]
+        updated_messages = body.messages + [Message(role="assistant", content=assistant_message)]
         chat_history = [
             {"role": msg.role, "content": msg.content}
             for msg in updated_messages[-MAX_CHAT_HISTORY:]
@@ -272,7 +275,7 @@ async def chat(
         background_tasks.add_task(
             save_chat_history_background,
             user_id,
-            request.node_id,
+            body.node_id,
             chat_history
         )
 
@@ -280,7 +283,7 @@ async def chat(
         is_curious = curiosity_eval.get("is_curious", False)
         if is_curious:
             score_result = await loop.run_in_executor(
-                executor, process_curiosity_score, user_id, request.node_id
+                executor, process_curiosity_score, user_id, body.node_id
             )
         else:
             score_result = {"curiosity_score": None, "is_completed": False}

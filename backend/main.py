@@ -1,7 +1,18 @@
+import asyncio
+import sys
+
+# ProactorEventLoop (Windows default) raises WinError 10054 on normal client
+# disconnects. SelectorEventLoop handles it silently. No effect on Linux.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from database import init_db, pool
+from limiter import limiter
 from routes import auth, chat, graph
 from dotenv import load_dotenv
 import os
@@ -22,6 +33,8 @@ async def lifespan(app: FastAPI):
     pool.close()
 
 app = FastAPI(title="Knowledge Graph API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware for frontend
 app.add_middleware(

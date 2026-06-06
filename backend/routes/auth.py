@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
 from database import execute_query
+from limiter import limiter
 import jwt
 from datetime import datetime, timedelta
 
@@ -17,7 +18,8 @@ class GoogleLoginRequest(BaseModel):
     credential: str
 
 @router.post("/google")
-async def google_login(request: GoogleLoginRequest):
+@limiter.limit("10/minute")
+async def google_login(request: Request, body: GoogleLoginRequest):
     """
     Login flow:
     1. User clicks "Sign in with Google" → Google popup appears
@@ -30,11 +32,11 @@ async def google_login(request: GoogleLoginRequest):
     8. Frontend stores token in localStorage
     """
     try:
-        print(f"Received credential: {request.credential[:50]}...")
-        
+        print(f"Received credential: {body.credential[:50]}...")
+
         # Verify Google token
         idinfo = id_token.verify_oauth2_token(
-            request.credential, 
+            body.credential,
             requests.Request(), 
             GOOGLE_CLIENT_ID
         )
